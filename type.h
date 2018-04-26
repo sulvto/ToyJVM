@@ -3,7 +3,7 @@
 //
 
 
-typedef unsigned long long 	u64;
-typedef unsigned int 		u32;
-typedef unsigned short 		u16;
-typedef unsigned char 		u8;
+typedef unsigned long long 	u8;
+typedef unsigned int 		u4;
+typedef unsigned short 		u2;
+typedef unsigned char 		u1;

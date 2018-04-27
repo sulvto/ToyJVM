@@ -141,7 +141,8 @@ struct ClassFile {
 };
 
 struct s_class_data {
-	u1 *data;
+    // 1024??
+	u1  data[1024];
     int length;
 	int index;
 };
@@ -153,9 +154,9 @@ u1 readU1(struct s_class_data *class_data) {
 
 u2 readU2(struct s_class_data *class_data)
 {
-	u2 d = readU1(class_data);
-	d = d << 8;
-	return d | readU1(class_data);
+    u2 d = readU1(class_data);
+    d = d << 8;
+    return d | readU1(class_data);
 }
 
 u4 readU4(struct s_class_data *class_data)
@@ -225,105 +226,96 @@ void readAndCheckVersion(struct s_class_data *class_data, struct ClassFile *_cla
 
 }
 
-union ConstantInfo readConstantInfo(const u1 tag, struct s_class_data *class_data)
-{
-    union ConstantInfo constantInfo;
-    
-    if (tag == CONSTANT_Class) {
-        struct CONSTANT_Class_info class_info;
-        class_info.name_index = readU2(class_data);
-        constantInfo.class_info = class_info;
-    } else if (tag == CONSTANT_Fieldref) {
-        struct CONSTANT_Fieldref_info fieldref_info;
-        fieldref_info.class_index = readU2(class_data);
-        fieldref_info.name_and_type_index = readU2(class_data);
-        constantInfo.fieldref_info = fieldref_info;
-    } else if (tag == CONSTANT_Methodref) {
-        struct CONSTANT_Methodref_info methodref_info;
-        methodref_info.class_index = readU2(class_data);
-        methodref_info.name_and_type_index = readU2(class_data);
-        constantInfo.methodref_info = methodref_info;
-    } else if (tag == CONSTANT_InterfaceMethodref) {
-        struct CONSTANT_InterfaceMethodref_info interfaceMethodref_info;
-        interfaceMethodref_info.class_index = readU2(class_data);
-        interfaceMethodref_info.name_and_type_index = readU2(class_data);
-        constantInfo.interfaceMethodref_info = interfaceMethodref_info;
-    } else if (tag == CONSTANT_String) {
-        struct CONSTANT_String_info string_info;
-        string_info.string_index = readU2(class_data);
-        constantInfo.string_info = string_info;
-    } else if (tag == CONSTANT_Integer) {
-        struct CONSTANT_Integer_info integer_info;
-        integer_info.bytes = readU4(class_data);
-        constantInfo.integer_info = integer_info;
-    } else if (tag == CONSTANT_Float) {
-        struct CONSTANT_Float_info float_info;
-        float_info.bytes = readU4(class_data);
-        constantInfo.float_info = float_info;
-    } else if (tag == CONSTANT_Long) {
-        struct CONSTANT_Long_info long_info;
-        long_info.high_bytes = readU4(class_data);
-        long_info.low_bytes -= readU4(class_data);
-        constantInfo.long_info = long_info;
-    } else if (tag == CONSTANT_Double) {
-        struct CONSTANT_Double_info double_info;
-        double_info.high_bytes = readU4(class_data);
-        constantInfo.double_info = double_info;
-    } else if (tag == CONSTANT_NameAndType) {
-        struct CONSTANT_NameAndType_info nameAndType_info;
-        nameAndType_info.name_index = readU2(class_data);
-        nameAndType_info.descriptor_index = readU2(class_data);
-        constantInfo.nameAndType_info = nameAndType_info;
-    } else if (tag == CONSTANT_Utf8) {
-        struct CONSTANT_Utf8_info utf8_info;
-        utf8_info.length = readU2(class_data);
-        u1 bytes[utf8_info.length];
-        for (u2 j = 0; j < utf8_info.length; j++) {
-            bytes[j] = readU1(class_data);
-        }
-        utf8_info.bytes = bytes;
-        constantInfo.utf8_info = utf8_info;
-    } else if (tag == CONSTANT_MethodHandle) {
-        struct CONSTANT_MethodHandle_info methodHandle_info;
-        methodHandle_info.reference_kind = readU1(class_data);
-        methodHandle_info.reference_index = readU2(class_data);
-        constantInfo.methodHandle_info = methodHandle_info;
-    } else if (tag == CONSTANT_MethodType) {
-        struct CONSTANT_MethodType_info methodType_info;
-        methodType_info.descriptor_index = readU2(class_data);
-        constantInfo.methodType_info = methodType_info;
-    } else if (tag == CONSTANT_InvokeDynamic) {
-        struct CONSTANT_InvokeDynamic_info invokeDynamic_info;
-        invokeDynamic_info.bootstrap_method_attr_index = readU2(class_data);
-        invokeDynamic_info.name_and_type_index = readU2(class_data);
-        constantInfo.invokeDynamic_info = invokeDynamic_info;
-    } else {
-        printf("index %d\n", tag);
-        printf("Class format error! constant pool tag!\n");
-        exit(1);
-        return constantInfo;
-    }
-    return constantInfo;
-}
-
 void readConstantPool(struct s_class_data *class_data, struct ClassFile *_class)
 {
     u2 count = _class->constant_pool_count = readU2(class_data);
+    _class->constant_pool = (struct ConstantPoolInfo*) malloc(sizeof(struct ConstantPoolInfo) * count);
 
-    _class->constant_pool[count];
-    struct ConstantPoolInfo constantPoolInfo[count];
+    u2 index = 0;
+    for (int i = 1; i < count; i++) {
 
-    int index = 0;
-
-    for (u2 i = 1; i<count; i++) {
         struct ConstantPoolInfo cp_info;
-        cp_info.tag = readU1(class_data);
-        cp_info.info = readConstantInfo(cp_info.tag, class_data);
-//        constantPoolInfo[index] = cp_info;
-//        index++;
-    }
 
-//    _class->constant_pool = constantPool;
+        u1 tag = cp_info.tag = readU1(class_data);
+
+        union ConstantInfo constantInfo;
+
+        if (tag == CONSTANT_Class) {
+            struct CONSTANT_Class_info class_info;
+            class_info.name_index = readU2(class_data);
+            constantInfo.class_info = class_info;
+        } else if (tag == CONSTANT_Fieldref) {
+            struct CONSTANT_Fieldref_info fieldref_info;
+            fieldref_info.class_index = readU2(class_data);
+            fieldref_info.name_and_type_index = readU2(class_data);
+            constantInfo.fieldref_info = fieldref_info;
+        } else if (tag == CONSTANT_Methodref) {
+            struct CONSTANT_Methodref_info methodref_info;
+            methodref_info.class_index = readU2(class_data);
+            methodref_info.name_and_type_index = readU2(class_data);
+            constantInfo.methodref_info = methodref_info;
+        } else if (tag == CONSTANT_InterfaceMethodref) {
+            struct CONSTANT_InterfaceMethodref_info interfaceMethodref_info;
+            interfaceMethodref_info.class_index = readU2(class_data);
+            interfaceMethodref_info.name_and_type_index = readU2(class_data);
+            constantInfo.interfaceMethodref_info = interfaceMethodref_info;
+        } else if (tag == CONSTANT_String) {
+            struct CONSTANT_String_info string_info;
+            string_info.string_index = readU2(class_data);
+            constantInfo.string_info = string_info;
+        } else if (tag == CONSTANT_Integer) {
+            struct CONSTANT_Integer_info integer_info;
+            integer_info.bytes = readU4(class_data);
+            constantInfo.integer_info = integer_info;
+        } else if (tag == CONSTANT_Float) {
+            struct CONSTANT_Float_info float_info;
+            float_info.bytes = readU4(class_data);
+            constantInfo.float_info = float_info;
+        } else if (tag == CONSTANT_Long) {
+            struct CONSTANT_Long_info long_info;
+            long_info.high_bytes = readU4(class_data);
+            long_info.low_bytes -= readU4(class_data);
+            constantInfo.long_info = long_info;
+        } else if (tag == CONSTANT_Double) {
+            struct CONSTANT_Double_info double_info;
+            double_info.high_bytes = readU4(class_data);
+            constantInfo.double_info = double_info;
+        } else if (tag == CONSTANT_NameAndType) {
+            struct CONSTANT_NameAndType_info nameAndType_info;
+            nameAndType_info.name_index = readU2(class_data);
+            nameAndType_info.descriptor_index = readU2(class_data);
+            constantInfo.nameAndType_info = nameAndType_info;
+        } else if (tag == CONSTANT_Utf8) {
+            struct CONSTANT_Utf8_info utf8_info;
+            utf8_info.length = readU2(class_data);
+            utf8_info.bytes = (u1 *) malloc(sizeof(u1) * utf8_info.length);
+            for (u2 j = 0; j < utf8_info.length; j++) {
+                utf8_info.bytes[j] = readU1(class_data);
+            }
+            constantInfo.utf8_info = utf8_info;
+        } else if (tag == CONSTANT_MethodHandle) {
+            struct CONSTANT_MethodHandle_info methodHandle_info;
+            methodHandle_info.reference_kind = readU1(class_data);
+            methodHandle_info.reference_index = readU2(class_data);
+            constantInfo.methodHandle_info = methodHandle_info;
+        } else if (tag == CONSTANT_MethodType) {
+            struct CONSTANT_MethodType_info methodType_info;
+            methodType_info.descriptor_index = readU2(class_data);
+            constantInfo.methodType_info = methodType_info;
+        } else if (tag == CONSTANT_InvokeDynamic) {
+            struct CONSTANT_InvokeDynamic_info invokeDynamic_info;
+            invokeDynamic_info.bootstrap_method_attr_index = readU2(class_data);
+            invokeDynamic_info.name_and_type_index = readU2(class_data);
+            constantInfo.invokeDynamic_info = invokeDynamic_info;
+        } else {
+            printf("tag %x\n", tag);
+            printf("Class format error! constant pool tag!\n");
+            exit(1);
+        }
+
+        cp_info.info = constantInfo;
+        _class->constant_pool[index++] = cp_info;
+    }
 }
 
 
@@ -332,14 +324,13 @@ struct AttributeInfo readAttributes(const struct s_class_data *class_data)
     struct AttributeInfo attributeInfo;
 
     attributeInfo.attribute_name_index = readU2(class_data);
-    printf("attribute_name_index %c\n", attributeInfo.attribute_name_index);
     attributeInfo.attribute_length = readU4(class_data);
-    u1 info[attributeInfo.attribute_length];
+
+    attributeInfo.info = (u1 *) malloc(sizeof(u1) * attributeInfo.attribute_length);
 
     for (int i = 0; i < attributeInfo.attribute_length; i++) {
-        info[i] = readU1(class_data);
+        attributeInfo.info[i] = readU1(class_data);
     }
-    attributeInfo.info = info;
 
     return attributeInfo;
 }
@@ -352,12 +343,11 @@ struct MemberInfo readMember(struct s_class_data *class_data)
     memberInfo.descriptor_index = readU2(class_data);
     memberInfo.attributes_count = readU2(class_data);
 
-    struct AttributeInfo attributeInfo[memberInfo.attributes_count];
+    memberInfo.attributes = (struct AttributeInfo *) malloc(sizeof(struct AttributeInfo) * memberInfo.attributes_count);
 
     for (int i = 0; i < memberInfo.attributes_count; i++) {
-        attributeInfo[i] = readAttributes(class_data);
+        memberInfo.attributes[i] = readAttributes(class_data);
     }
-    memberInfo.attributes = attributeInfo;
 
     return memberInfo;
 }
@@ -366,27 +356,24 @@ void readFields(const struct s_class_data *class_data, struct ClassFile *_class)
 {
     int count = _class->fields_count = readU2(class_data);
 
-    struct MemberInfo members[count];
-    printf("fields_count %d\n", count);
+    _class->fields = (struct MemberInfo *) malloc(sizeof(struct MemberInfo) * count);
+
     for (int i=0; i<count; i++) {
-        members[i] = readMember(class_data);
+        _class->fields[i] = readMember(class_data);
     }
 
-    _class->fields = members;
 }
 
 void readMethods(const struct s_class_data *class_data, struct ClassFile *_class)
 {
     int count = _class->methods_count = readU2(class_data);
 
-    struct MemberInfo members[count];
-    printf("methods_count %d\n", count);
+    _class->methods = (struct MemberInfo *) malloc(sizeof(struct MemberInfo) * count);
 
     for (int i=0; i<count; i++) {
-        members[i] = readMember(class_data);
+        _class->methods[i] = readMember(class_data);
     }
 
-    _class->methods = members;
 }
 
 
@@ -394,16 +381,12 @@ struct s_class_data readClass(const char *className)
 {
     FILE *f;
     f = fopen(className, "r");
-    printf("class_data open %s\n", className);
     struct s_class_data class_data;
-    u1 data[1024];
     int i = 0;
     u1 buf;
     while (fread(&buf, sizeof(u1), 1, f) != 0) {
-        data[i] = buf;
-        i++;
+        class_data.data[i++] = buf;
     }
-    class_data.data = data;
 
     class_data.index = 0;
     class_data.length = i;
@@ -422,19 +405,15 @@ struct ClassFile parseClass(struct s_class_data *class_data)
     _class.super_class = readU2(class_data);
     _class.interfaces_count = readU2(class_data);
     // TODO interfaces
-
-    printf("_class->readFields\n");
     readFields(class_data, &_class);
     readMethods(class_data, &_class);
-    printf("_class->attributes_count\n");
-    _class.attributes_count = readU2(class_data);
 
-    struct AttributeInfo attributeInfo[_class.attributes_count];
+    _class.attributes_count = readU2(class_data);
+    _class.attributes = (struct AttributeInfo *) malloc(sizeof(struct AttributeInfo) * _class.attributes_count);
 
     for (int i = 0; i < _class.attributes_count; i++) {
-        attributeInfo[i] = readAttributes(class_data);
+        _class.attributes [i] = readAttributes(class_data);
     }
-    _class.attributes = attributeInfo;
 
     return _class;
 }
@@ -445,7 +424,7 @@ void printClassInfo(struct ClassFile *_class) {
     printf("access flags: 0x%x\n", _class->access_flags);
     printf("this class: %d\n", _class->this_class);
     printf("super class: %d\n", _class->super_class);
-    printf("interfaces: %d\n", _class->interfaces);
+    printf("interfaces: %d\n", _class->interfaces_count);
     printf("fields count: %d\n", _class->fields_count);
     printf("methods count: %d\n", _class->methods_count);
 }

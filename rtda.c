@@ -4,6 +4,7 @@
 // Created by sulvto on 18-4-28.
 //
 
+#include <stddef.h>
 
 struct Object {
     // TODO
@@ -14,7 +15,11 @@ struct Slot {
     struct Object   *ref;
 };
 
-typedef struct Slot* LocalVars;
+struct LocalVars {
+    unsigned int size;
+    unsigned int max;
+    struct Slot *value;
+};
 
 struct OperandStack {
     unsigned int size;
@@ -38,16 +43,19 @@ struct Thread {
     struct Stack *stack;
 };
 
-LocalVars *newLocalVars(const unsigned int max)
+struct LocalVars *newLocalVars(const unsigned int max)
 {
-    struct Slot *slot = (struct Slot *) malloc(sizeof(struct Slot) * max);
-    return slot;
+    struct LocalVars *localVars = (struct LocalVars *) malloc(sizeof(struct LocalVars));
+    localVars->size = 0;
+    localVars->max = max;
+    localVars->value = (struct Slot *) malloc(sizeof(struct Slot) * max);
+    return localVars;
 }
 
 struct OperandStack *newOperandStack(const unsigned int max)
 {
     struct OperandStack *operand_stack = (struct OperandStack *) malloc(sizeof(struct OperandStack));
-    operand_stack->size = max;
+    operand_stack->size = 0;
     operand_stack->slot = (struct Slot *) malloc(sizeof(struct Slot) * max);
     return operand_stack;
 }
@@ -93,19 +101,20 @@ void pushInt(const int value, struct OperandStack *operandStack)
 
 void pushLong(const long value, struct OperandStack *operandStack)
 {
-    operandStack->slot[operandStack->size++].num = value;
-    operandStack->slot[operandStack->size++].num = value >> 32;
+    operandStack->slot[operandStack->size++].num = value >> 16;
+    operandStack->slot[operandStack->size++].num = value & 65535L;
 }
 
 void pushFloat(const float value, struct OperandStack *operandStack)
 {
-    operandStack->slot[operandStack->size++].num = value;
+    float *f = &operandStack->slot[operandStack->size++].num;
+    *f = value;
 }
 
 void pushDouble(const double value, struct OperandStack *operandStack)
 {
-    operandStack->slot[operandStack->size++].num = value;
-    operandStack->slot[operandStack->size++].num = value >> 32;
+//    operandStack->slot[operandStack->size++].num = value;
+//    operandStack->slot[operandStack->size++].num = value >> 32;
 }
 
 void pushRef(const struct Object *value, struct OperandStack *operandStack)
@@ -115,137 +124,148 @@ void pushRef(const struct Object *value, struct OperandStack *operandStack)
 
 int popInt(struct OperandStack *operandStack)
 {
-    return operandStack->slot[operandStack->size--].num;
+    return operandStack->slot[--operandStack->size].num;
 }
 
 long popLong(struct OperandStack *operandStack)
 {
-    long l = operandStack->slot[operandStack->size--].num;
-    l = l << 32;
-    l &= operandStack->slot[operandStack->size--].num;
-    return l;
+    long low = operandStack->slot[--operandStack->size].num;
+    int high = operandStack->slot[--operandStack->size].num;
+    high = high << 16;
+    return (high | low);
 }
 
 float popFloat(struct OperandStack *operandStack)
 {
-    return operandStack->slot[operandStack->size--].num;
+    float *f =  &operandStack->slot[--operandStack->size].num;
+    return *f;
 }
 
 double popDouble(struct OperandStack *operandStack)
 {
-    double d = operandStack->slot[operandStack->size--].num;
-    d = d << 32;
-    d &= operandStack->slot[operandStack->size--].num;
-    return d;
+    // TODO
+//    double d = operandStack->slot[--operandStack->size].num;
+//    d = d << 32;
+//    d &= operandStack->slot[--operandStack->size].num;
+    return 0;
 }
 
 
 struct Object *popRef(struct OperandStack *operandStack)
 {
-    return operandStack->slot[operandStack->size--].ref;
+    return operandStack->slot[--operandStack->size].ref;
 }
 
 
-void setInt(const unsigned int index, int value, LocalVars *localVars)
+void setInt(const unsigned int index, int value, struct LocalVars *localVars)
 {
-    localVars[index]->num = value;
+    localVars->value[index].num = value;
 }
 
-void setLong(const unsigned int index, long value, LocalVars *localVars)
+void setLong(const unsigned int index, long value, struct LocalVars *localVars)
 {
-    localVars[index]->num = value;
-    localVars[index + 1]->num = value >> 32;
+//    int high = value >> 16;
+//    int low = value & 65535;
+    localVars->value[index].num = value >> 16;
+    localVars->value[index + 1].num = value & 65535L;
 }
 
-void setFloat(const unsigned int index, float value, LocalVars *localVars)
+void setFloat(const unsigned int index, float value, struct LocalVars *localVars)
 {
-    localVars[index]->num = value;
+    float *f = &localVars->value[index].num;
+    *f = value;
 }
 
-void setDouble(const unsigned int index, double value, LocalVars *localVars)
+void setDouble(const unsigned int index, double value, struct LocalVars *localVars)
 {
-    localVars[index]->num = value;
-    localVars[index + 1]->num = value >> 32;
+    // TODO
+//    localVars[index]->num = value;
+//    localVars[index + 1]->num = value >> 32;
 }
 
-void setRef(const unsigned int index, struct Object *value, LocalVars *localVars)
+void setRef(const unsigned int index, struct Object *value, const struct LocalVars *localVars)
 {
-    localVars[index]->ref = value;
-
+    localVars->value[index].ref = value;
 }
 
-int getInt(const unsigned int index, LocalVars *localVars)
+int getInt(const unsigned int index, struct LocalVars *localVars)
 {
-    return localVars[index]->num;
+    return localVars->value[index].num;
 }
 
-long getLong(const unsigned int index, LocalVars *localVars)
+long getLong(const unsigned int index, struct LocalVars *localVars)
 {
-    long result = localVars[index++]->num;
-    result = result << 32;
-    result &= localVars[index]->num;
-    return result;
+    long high = localVars->value[index].num;
+    int low = localVars->value[index + 1].num;
+    high = high << 16;
+    return (high | low);
 }
 
-float getFloat(const unsigned int index, LocalVars *localVars)
+float getFloat(const unsigned int index, struct LocalVars *localVars)
 {
-    return (float) localVars[index]->num;
+    float *f = &localVars->value[index].num;
+    return *f;
 }
 
-double getDouble(const unsigned int index, LocalVars *localVars)
+double getDouble(const unsigned int index, struct LocalVars *localVars)
 {
-    double result = localVars[index++]->num;
-    result = result << 32;
-    result &= localVars[index]->num;
-    return result;
+//    double result = localVars[index++]->num;
+//    result = result << 32;
+//    result &= localVars[index]->num;
+    return 0;
 }
 
-struct Object *getRef(const unsigned int index, LocalVars *localVars)
+struct Object *getRef(const unsigned int index, struct LocalVars *localVars)
 {
-    return localVars[index]->ref;
+    return localVars->value[index].ref;
 }
 
-void testLocalVars(LocalVars localVars) {
+void testLocalVars(struct LocalVars *localVars) {
     setInt(0, 100, localVars);
     setInt(1, -100, localVars);
-    setLong(2, 2997924580, localVars);
-    setLong(4, -2997924580, localVars);
+    setLong(2, 2147483647, localVars);
+    setLong(4, -2147483647, localVars);
     setFloat(6, 3.1415926, localVars);
-    setDouble(7, 2.71828182845, localVars);
-    setRef(9, NULL, localVars);
+//    setDouble(3, 2.71828182845, localVars);
+    setRef(7, NULL, localVars);
 
-    print(getInt(0, localVars));
-    print(getInt(1, localVars));
-    print(getLong(2, localVars));
-    print(getLong(4, localVars));
-    print(getFloat(6, localVars));
-    print(getDouble(7, localVars));
-    print(getRef(9, localVars));
+    printf("%d\n", getInt(0, localVars));
+    printf("%d\n", getInt(1, localVars));
+    printf("%d\n", getLong(2, localVars));
+    printf("%d\n", getLong(4, localVars));
+    printf("%f\n", getFloat(6, localVars));
+//    printf("%u\n", getDouble(7, localVars));
+    printf("%u\n", getRef(7, localVars));
 }
 
 void testOperandStack(struct OperandStack *operandStack)
 {
     pushInt(100, operandStack);
     pushInt(-100, operandStack);
-    pushLong(2997924580, operandStack);
-    pushLong(-2997924580, operandStack);
+    pushLong(2147483647, operandStack);
+    pushLong(-2147483647, operandStack);
     pushFloat(3.1415926, operandStack);
-    pushDouble(2.71828182845, operandStack);
+//    pushDouble(2.71828182845, operandStack);
     pushRef(NULL, operandStack);
 
-    print(popInt(operandStack));
-    print(popInt(operandStack));
-    print(popLong(operandStack));
-    print(popLong(operandStack));
-    print(popFloat(operandStack));
-    print(popDouble(operandStack));
+    printf("%u\n", popRef(operandStack));
+//        printf("%u\n", popDouble(operandStack));
+    printf("%f\n", popFloat(operandStack));
+    printf("%d\n", popLong(operandStack));
+    printf("%d\n", popLong(operandStack));
+    printf("%d\n", popInt(operandStack));
+    printf("%d\n", popInt(operandStack));
+
 }
 
 
 int main()
 {
     struct Frame *frame = newFrame(100, 100);
-    LocalVars localVars = &frame->localVars;
+    struct LocalVars *localVars = frame->localVars;
+    struct OperandStack *operandStack = frame->operand_stack;
+    printf("testLocalVars \n");
     testLocalVars(localVars);
-    testOperandStack(localVars);
+    printf("testLocalVars \n");
+    testOperandStack(operandStack);
 }

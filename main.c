@@ -60,12 +60,12 @@ struct MemberInfo *getMainMethod(const struct ClassFile *classFile)
 {
 
 	for (int i = 0; i < classFile->methods_count; ++i) {
-		struct MemberInfo memberInfo = classFile->methods[i];
+		struct MemberInfo *memberInfo = &classFile->methods[i];
 		char name[1024];
 
-		methodName(&memberInfo, classFile->constant_pool, name);
+		methodName(memberInfo, classFile->constant_pool, name);
 		if (strcmp("main", name) == 0) {
-			return &memberInfo;
+			return memberInfo;
 		}
 	}
 
@@ -93,7 +93,7 @@ int main(int argc, char **argv)
 	if (mainMethod != NULL) {
 		interpret(mainMethod);
 	} else {
-		printf("main method is null!");
+		printf("Main method not found in class! \n");
 	}
 
 }

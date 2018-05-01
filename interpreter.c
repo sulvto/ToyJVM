@@ -22,7 +22,8 @@ void loop(struct Thread *thread, u1 *bytecode)
         thread->pc = pc;
 
         reset(bytecode, pc, bytecode_data);
-        u1 opcode = readU1(bytecode_data);
+        u1 opcode = readBytecodeU1(bytecode_data);
+
 
         union Context *context = (union Context *) malloc(sizeof(union Context));
 
@@ -31,6 +32,8 @@ void loop(struct Thread *thread, u1 *bytecode)
         frame->nextPC = bytecode_data->pc;
 
         inst.execute(context, frame);
+
+        printf("pc:%d\n", pc);
 
         free(context);
     }
@@ -42,11 +45,10 @@ void interpret(struct MemberInfo *mainMethod)
     u2 max_locals = code_attribute.max_locals;
     u2 max_stack = code_attribute.max_stack;
     const u4 code_length = code_attribute.code_length;
-    u1 *bytecode = (u1*)malloc(sizeof(u1) * code_length);
-    *bytecode = code_attribute.code;
 
     struct Thread *thread = newThread();
     struct Frame *frame = newFrame(max_locals, max_stack, thread);
+    pushFrame(frame, thread);
 
-    loop(thread, bytecode);
+    loop(thread, code_attribute.code);
 }

@@ -216,14 +216,12 @@ union AttributeInfo readAttributes(struct s_class_data *class_data, const struct
     attributeName(attribute_name_index, constant_pool, &attrName);
 
     if (strcmp(ATTRIBUTE_ConstantValue, attrName) == 0) {
-
         struct ConstantValue_attributeInfo constantValue;
         constantValue.attribute_name_index = attribute_name_index;
         constantValue.attribute_length = attribute_length;
         constantValue.constantValue_index = readU2(class_data);
         attributeInfo.constantValue = constantValue;
     }else if (strcmp(ATTRIBUTE_Code, attrName) == 0) {
-
         struct Code_attributeInfo code;
         code.attribute_name_index = attribute_name_index;
         code.attribute_length = attribute_length;
@@ -247,8 +245,6 @@ union AttributeInfo readAttributes(struct s_class_data *class_data, const struct
         }
         attributeInfo.code = code;
     } else {
-        printf("Unparsed_attributeInfo\n");
-
         struct Unparsed_attributeInfo unparsed;
 
         unparsed.attribute_name_index = attribute_name_index;
@@ -336,9 +332,7 @@ struct ClassFile parseClass(struct s_class_data *class_data)
     _class.interfaces_count = readU2(class_data);
     // TODO interfaces
     readFields(class_data, &_class);
-    printf("readMethods \n");
     readMethods(class_data, &_class);
-    printf("attributes_count \n");
     _class.attributes_count = readU2(class_data);
     _class.attributes = (union AttributeInfo *) malloc(sizeof(union AttributeInfo) * _class.attributes_count);
 

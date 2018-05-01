@@ -216,18 +216,20 @@ const u1 JSR_W = 0xc9;
 union Context {
     int index;
     int offset;
+    u1 bi;
+    short si;
 };
-
-struct Instruction {
-    Context context;
-    FetchOperands fetchOp;
-    Execute exe;
-};
-
 
 typedef void(*Execute)(union Context *, struct Frame *);
 
 typedef void(*FetchOperands)(union Context *, struct BytecodeReader *);
+
+
+struct Instruction {
+    FetchOperands fetchOperands;
+    Execute execute;
+};
+
 
 struct Instruction *newInstruction(u1 opcode);
 

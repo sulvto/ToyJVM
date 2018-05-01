@@ -6,15 +6,16 @@
 #include "bytecode.h"
 #include "instruction.h"
 #include <stdlib.h>
+#include <math.h>
 
-void nop_fetchOp(union Context *context, struct BytecodeData *data)
+void nop_fetchOp(union Context *context, struct Bytecode *data)
 {
     // noting to do
 }
 
-void branch_fetchOp(union Context *context, struct BytecodeData *data)
+void branch_fetchOp(union Context *context, struct Bytecode *data)
 {
-    context->offset = readU2(data);
+    context->offset = readBytecodeU2(data);
 }
 
 void branch(struct Frame *frame, int offset)
@@ -23,14 +24,14 @@ void branch(struct Frame *frame, int offset)
     frame->nextPC = pc + offset;
 }
 
-void index8_fetchOp(union Context *context, struct BytecodeData *data)
+void index8_fetchOp(union Context *context, struct Bytecode *data)
 {
-    context->index = readU1(data);
+    context->index = readBytecodeU1(data);
 }
 
-void index16_fetchOp(union Context *context, struct BytecodeData *data)
+void index16_fetchOp(union Context *context, struct Bytecode *data)
 {
-    context->index = readU2(data);
+    context->index = readBytecodeU2(data);
 }
 
 void nop_exe(union Context *context, struct Frame *frame)
@@ -112,7 +113,7 @@ void dconst_1_exe(union Context *context, struct Frame *frame)
     pushDouble(1.0, frame->operand_stack);
 }
 
-void bipush_fetchOp(union Context *context, struct BytecodeData *bytecode_data)
+void bipush_fetchOp(union Context *context, struct Bytecode *bytecode_data)
 {
     // TODO byte int
     context->bi = readU1(bytecode_data);
@@ -125,7 +126,7 @@ void bipush_exe(union Context *context, struct Frame *frame)
 
 }
 
-void sipush_fetchOp(union Context *context, struct BytecodeData *bytecode_data)
+void sipush_fetchOp(union Context *context, struct Bytecode *bytecode_data)
 {
     // TODO short int
     context->si = readU2(bytecode_data);
@@ -724,7 +725,7 @@ void frem_exe(union Context *context, struct Frame *frame)
     if (a == 0) {
         // TODO
     }
-    pushFloat(fmod(b, a), frame->operand_stack);
+//    pushFloat(fmod(b, a), frame->operand_stack);
 }
 
 void drem_exe(union Context *context, struct Frame *frame)
@@ -734,7 +735,7 @@ void drem_exe(union Context *context, struct Frame *frame)
     if (a == 0) {
         // TODO
     }
-    pushDouble(fmod(b, a), frame->operand_stack);
+//    pushDouble(fmod(b, a), frame->operand_stack);
 }
 
 void ineg_exe(union Context *context, struct Frame *frame)

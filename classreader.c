@@ -426,9 +426,9 @@ void printUtf8(struct CONSTANT_Utf8_info *utf8_info)
     printf("\n");
 }
 
- int main()
-{
-    struct s_class_data class_data = readClass("Test.class");
-    struct ClassFile _class = parseClass(&class_data);
-    printClassInfo(&_class);
-}
+// int main()
+//{
+//    struct s_class_data class_data = readClass("Test.class");
+//    struct ClassFile _class = parseClass(&class_data);
+//    printClassInfo(&_class);
+//}

@@ -5,19 +5,19 @@
 #include "type.h"
 #include "bytecode.h"
 
-void reset(u1 *code, const int pc, struct BytecodeData *data)
+void reset(u1 *code, const int pc, struct Bytecode *data)
 {
     data->code = code;
     data->pc = pc;
 }
 
-u1 readU1(struct BytecodeData *data)
+u1 readBytecodeU1(struct Bytecode *data)
 {
     return data->code[data->pc++];
 }
 
-u2 readU2(struct BytecodeData *data)
+u2 readBytecodeU2(struct Bytecode *data)
 {
-    u2 d = readU1(reader);
-    return d << 8 | readU1(reader);
+    u2 d = readBytecodeU1(data);
+    return d << 8 | readBytecodeU1(data);
 }

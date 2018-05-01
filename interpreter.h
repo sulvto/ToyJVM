@@ -7,6 +7,7 @@
 
 #include "type.h"
 #include "rtda.h"
+#include "bytecode.h"
 
 void interpret(struct MemberInfo *mainMethod);
 

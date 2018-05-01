@@ -5,16 +5,18 @@
 #ifndef TOYJVM_BYTECODE_H
 #define TOYJVM_BYTECODE_H
 
-struct BytecodeData {
+#include "type.h"
+
+struct Bytecode {
     u1  *code;
     int pc;
 };
 
-void reset(u1 *code, const int pc, struct BytecodeData *data);
+void reset(u1 *code, const int pc, struct Bytecode *data);
 
-u1 readU1(struct BytecodeData *data);
+u1 readBytecodeU1(struct Bytecode *data);
 
-u2 readU2(struct BytecodeData *data);
+u2 readBytecodeU2(struct Bytecode *data);
 
 
 #endif //TOYJVM_BYTECODE_H

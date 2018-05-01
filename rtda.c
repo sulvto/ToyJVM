@@ -96,9 +96,9 @@ void pushRef(const struct Object *value, struct OperandStack *operandStack)
 
 void pushSlot(const struct Slot slot, struct OperandStack *operandStack)
 {
-    struct Slot *slot = &operandStack->slot[operandStack->size++];
-    slot->num = slot->num;
-    slot->ref = slot->ref;
+    struct Slot *target = &operandStack->slot[operandStack->size++];
+    target->num = slot.num;
+    target->ref = slot.ref;
 }
 
 int popInt(struct OperandStack *operandStack)

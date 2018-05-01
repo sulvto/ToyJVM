@@ -2,11 +2,12 @@
 // Created by sulvto on 18-4-30.
 //
 
+#include "type.h"
+#include "bytecode.h"
 #include "classreader.h"
 #include "rtda.h"
 #include "interpreter.h"
-#include "bytecode.h"
-
+#include "instruction.h"
 
 
 void loop(struct Thread *thread, u1 *bytecode)
@@ -23,11 +24,15 @@ void loop(struct Thread *thread, u1 *bytecode)
         reset(bytecode, pc, bytecode_data);
         u1 opcode = readU1(bytecode_data);
 
+        union Context *context = (union Context *) malloc(sizeof(union Context));
+
+        struct Instruction *inst = newInstruction(opcode);
+        inst->fetchOperands(context, bytecode_data);
         frame->nextPC = reader->pc;
 
-//        printf("pc:%d inst:%v %v\n", pc, )
+        inst->execute(context, frame);
 
-        execute(frame);
+        free(context);
     }
 }
 

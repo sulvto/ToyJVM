@@ -8,6 +8,6 @@
 #include "type.h"
 #include "rtda.h"
 
-void interpret(MemberInfo *mainMethod);
+void interpret(struct MemberInfo *mainMethod);
 
 #endif //TOYJVM_INTERPRETER_H

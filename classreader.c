@@ -40,22 +40,19 @@ u1 readU1(struct s_class_data *class_data) {
 u2 readU2(struct s_class_data *class_data)
 {
     u2 d = readU1(class_data);
-    d = d << 8;
-    return d | readU1(class_data);
+    return d << 8 | readU1(class_data);
 }
 
 u4 readU4(struct s_class_data *class_data)
 {
 	u4 d = readU2(class_data);
-	d = d << 16;
-    return d | readU2(class_data);
+    return d << 16 | readU2(class_data);
 }
 
 u8 readU8(struct s_class_data *class_data)
 {
 	u8 d = readU4(class_data);
-    d = d << 32;
-    return d | readU4(class_data);
+    return d << 32 | readU4(class_data);
 }
 
 u2 *readU2s(struct s_class_data *class_data)

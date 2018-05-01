@@ -222,7 +222,7 @@ union Context {
 
 typedef void(*Execute)(union Context *, struct Frame *);
 
-typedef void(*FetchOperands)(union Context *, struct BytecodeReader *);
+typedef void(*FetchOperands)(union Context *, struct BytecodeData *);
 
 
 struct Instruction {
@@ -231,6 +231,6 @@ struct Instruction {
 };
 
 
-struct Instruction *newInstruction(u1 opcode);
+struct Instruction newInstruction(u1 opcode);
 
 #endif //TOYJVM_INSTRUCTION_H

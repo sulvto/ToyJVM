@@ -30,15 +30,13 @@ void index8_fetchOp(union Context *context, struct BytecodeData *data)
 
 void index16_fetchOp(union Context *context, struct BytecodeData *data)
 {
-    context.index = readU2(data);
+    context->index = readU2(data);
 }
-
 
 void nop_exe(union Context *context, struct Frame *frame)
 {
 
 }
-
 
 void aconst_null_exe(union Context *context,struct Frame *frame)
 {
@@ -531,8 +529,8 @@ void pop2_exe(union Context *context, struct Frame *frame)
 void dup_exe(union Context *context, struct Frame *frame)
 {
     struct Slot slot = popSlot(frame->operand_stack);
-    pushSlot(slot);
-    pushSlot(slot);
+    pushSlot(slot, frame->operand_stack);
+    pushSlot(slot, frame->operand_stack);
 }
 
 void dup_x1_exe(union Context *context, struct Frame *frame) {
@@ -726,7 +724,7 @@ void frem_exe(union Context *context, struct Frame *frame)
     if (a == 0) {
         // TODO
     }
-    pushFloat(b % a, frame->operand_stack);
+    pushFloat(fmod(b, a), frame->operand_stack);
 }
 
 void drem_exe(union Context *context, struct Frame *frame)
@@ -736,7 +734,7 @@ void drem_exe(union Context *context, struct Frame *frame)
     if (a == 0) {
         // TODO
     }
-    pushDouble(b % a, frame->operand_stack);
+    pushDouble(fmod(b, a), frame->operand_stack);
 }
 
 void ineg_exe(union Context *context, struct Frame *frame)
@@ -1059,8 +1057,8 @@ void if_icmple_exe(union Context *context, struct Frame *frame)
 
 void if_acmpeq_exe(union Context *context, struct Frame *frame)
 {
-    Object *v2 = popRef(frame->operand_stack);
-    Object *v1 = popRef(frame->operand_stack);
+    struct Object *v2 = popRef(frame->operand_stack);
+    struct Object *v1 = popRef(frame->operand_stack);
     if (v2 != v1) {
         branch(frame, context->offset);
     }
@@ -1068,8 +1066,8 @@ void if_acmpeq_exe(union Context *context, struct Frame *frame)
 
 void if_acmpne_exe(union Context *context, struct Frame *frame)
 {
-    Object *v2 = popRef(frame->operand_stack);
-    Object *v1 = popRef(frame->operand_stack);
+    struct Object *v2 = popRef(frame->operand_stack);
+    struct Object *v1 = popRef(frame->operand_stack);
     if (v2 != v1) {
         branch(frame, context->offset);
     }
@@ -1256,414 +1254,421 @@ void jsr_w_exe(union Context *context, struct Frame *frame)
 
 }
 
-
-struct Instruction *newInstruction(u1 opcode)
+struct Instruction makeInstruction(FetchOperands fetchOperands, Execute execute)
 {
-    switch (opcode) {
-        case NOP:
-            return {nop_fetchOp, nop_exe};
-        case ACONST_NULL:
-            return {nop_fetchOp, aconst_null_exe};
-        case ICONST_M1:
-            return {nop_fetchOp, iconst_m1_exe};
-        case ICONST_0:
-            return {nop_fetchOp, iconst_0_exe};
-        case ICONST_1:
-            return {nop_fetchOp, iconst_1_exe};
-        case ICONST_2:
-            return {nop_fetchOp, iconst_2_exe};
-        case ICONST_3:
-            return {nop_fetchOp, iconst_3_exe};
-        case ICONST_4:
-            return {nop_fetchOp, iconst_4_exe};
-        case ICONST_5:
-            return {nop_fetchOp, iconst_5_exe};
-        case LCONST_0:
-            return {nop_fetchOp, lconst_0_exe};
-        case LCONST_1:
-            return {nop_fetchOp, lconst_1_exe};
-        case FCONST_0:
-            return {nop_fetchOp, fconst_0_exe};
-        case FCONST_1:
-            return {nop_fetchOp, fconst_1_exe};
-        case FCONST_2:
-            return {nop_fetchOp, fconst_2_exe};
-        case DCONST_0:
-            return {nop_fetchOp, dconst_0_exe};
-        case DCONST_1:
-            return {nop_fetchOp, dconst_1_exe};
-        case BIPUSH:
-            return {bipush_fetchOp, bipush_exe};
-        case SIPUSH:
-            return {sipush_fetchOp, sipush_exe};
-        case LDC:
-            return {nop_fetchOp, ldc_exe};
-        case LDC_W:
-            return {nop_fetchOp, ldc_w_exe};
-        case LDC2_W:
-            return {nop_fetchOp, ldc2_w_exe};
-        case ILOAD:
-            return {index8_fetchOp, iload_exe};
-        case LLOAD:
-            return {nop_fetchOp, lload_exe};
-        case FLOAD:
-            return {nop_fetchOp, fload_exe};
-        case DLOAD:
-            return {nop_fetchOp, dload_exe};
-        case ALOAD:
-            return {nop_fetchOp, aload_exe};
-        case ILOAD_0:
-            return {nop_fetchOp, iload_0_exe};
-        case ILOAD_1:
-            return {nop_fetchOp, iload_1_exe};
-        case ILOAD_2:
-            return {nop_fetchOp, iload_2_exe};
-        case ILOAD_3:
-            return {nop_fetchOp, iload_3_exe};
-        case LLOAD_0:
-            return {nop_fetchOp, lload_0_exe};
-        case LLOAD_1:
-            return {nop_fetchOp, lload_1_exe};
-        case LLOAD_2:
-            return {nop_fetchOp, lload_2_exe};
-        case LLOAD_3:
-            return {nop_fetchOp, lload_3_exe};
-        case FLOAD_0:
-            return {nop_fetchOp, fload_0_exe};
-        case FLOAD_1:
-            return {nop_fetchOp, fload_1_exe};
-        case FLOAD_2:
-            return {nop_fetchOp, fload_2_exe};
-        case FLOAD_3:
-            return {nop_fetchOp, fload_3_exe};
-        case DLOAD_0:
-            return {nop_fetchOp, dload_0_exe};
-        case DLOAD_1:
-            return {nop_fetchOp, dload_1_exe};
-        case DLOAD_2:
-            return {nop_fetchOp, dload_2_exe};
-        case DLOAD_3:
-            return {nop_fetchOp, dload_3_exe};
-        case ALOAD_0:
-            return {nop_fetchOp, aload_0_exe};
-        case ALOAD_1:
-            return {nop_fetchOp, aload_1_exe};
-        case ALOAD_2:
-            return {nop_fetchOp, aload_2_exe};
-        case ALOAD_3:
-            return {nop_fetchOp, aload_3_exe};
-        case IALOAD:
-            return {nop_fetchOp, iaload_exe};
-        case LALOAD:
-            return {nop_fetchOp, laload_exe};
-        case FALOAD:
-            return {nop_fetchOp, faload_exe};
-        case DALOAD:
-            return {nop_fetchOp, daload_exe};
-        case AALOAD:
-            return {nop_fetchOp, aaload_exe};
-        case BALOAD:
-            return {nop_fetchOp, baload_exe};
-        case CALOAD:
-            return {nop_fetchOp, caload_exe};
-        case SALOAD:
-            return {nop_fetchOp, saload_exe};
-        case ISTORE:
-            return {index8_fetchOp, istore_exe};
-        case LSTORE:
-            return {nop_fetchOp, lstore_exe};
-        case FSTORE:
-            return {nop_fetchOp, fstore_exe};
-        case DSTORE:
-            return {nop_fetchOp, dstore_exe};
-        case ASTORE:
-            return {nop_fetchOp, astore_exe};
-        case ISTORE_0:
-            return {nop_fetchOp, istore_0_exe};
-        case ISTORE_1:
-            return {nop_fetchOp, istore_1_exe};
-        case ISTORE_2:
-            return {nop_fetchOp, istore_2_exe};
-        case ISTORE_3:
-            return {nop_fetchOp, istore_3_exe};
-        case LSTORE_0:
-            return {nop_fetchOp, lstore_0_exe};
-        case LSTORE_1:
-            return {nop_fetchOp, lstore_1_exe};
-        case LSTORE_2:
-            return {nop_fetchOp, lstore_2_exe};
-        case LSTORE_3:
-            return {nop_fetchOp, lstore_3_exe};
-        case FSTORE_0:
-            return {nop_fetchOp, fstore_0_exe};
-        case FSTORE_1:
-            return {nop_fetchOp, fstore_1_exe};
-        case FSTORE_2:
-            return {nop_fetchOp, fstore_2_exe};
-        case FSTORE_3:
-            return {nop_fetchOp, fstore_3_exe};
-        case DSTORE_0:
-            return {nop_fetchOp, dstore_0_exe};
-        case DSTORE_1:
-            return {nop_fetchOp, dstore_1_exe};
-        case DSTORE_2:
-            return {nop_fetchOp, dstore_2_exe};
-        case DSTORE_3:
-            return {nop_fetchOp, dstore_3_exe};
-        case ASTORE_0:
-            return {nop_fetchOp, astore_0_exe};
-        case ASTORE_1:
-            return {nop_fetchOp, astore_1_exe};
-        case ASTORE_2:
-            return {nop_fetchOp, astore_2_exe};
-        case ASTORE_3:
-            return {nop_fetchOp, astore_3_exe};
-        case IASTORE:
-            return {nop_fetchOp, iastore_exe};
-        case LASTORE:
-            return {nop_fetchOp, lastore_exe};
-        case FASTORE:
-            return {nop_fetchOp, fastore_exe};
-        case DASTORE:
-            return {nop_fetchOp, dastore_exe};
-        case AASTORE:
-            return {nop_fetchOp, aastore_exe};
-        case BASTORE:
-            return {nop_fetchOp, bastore_exe};
-        case CASTORE:
-            return {nop_fetchOp, castore_exe};
-        case SASTORE:
-            return {nop_fetchOp, sastore_exe};
-        case POP:
-            return {nop_fetchOp, pop_exe};
-        case POP2:
-            return {nop_fetchOp, pop2_exe};
-        case DUP:
-            return {nop_fetchOp, dup_exe};
-        case DUP_X1:
-            return {nop_fetchOp, dup_x1_exe};
-        case DUP_X2:
-            return {nop_fetchOp, dup_x2_exe};
-        case DUP2:
-            return {nop_fetchOp, dup2_exe};
-        case DUP2_X1:
-            return {nop_fetchOp, dup2_x1_exe};
-        case DUP2_X2:
-            return {nop_fetchOp, dup2_x2_exe};
-        case SWAP:
-            return {nop_fetchOp, swap_exe};
-        case IADD:
-            return {nop_fetchOp, iadd_exe};
-        case LADD:
-            return {nop_fetchOp, ladd_exe};
-        case FADD:
-            return {nop_fetchOp, fadd_exe};
-        case DADD:
-            return {nop_fetchOp, dadd_exe};
-        case ISUB:
-            return {nop_fetchOp, isub_exe};
-        case LSUB:
-            return {nop_fetchOp, lsub_exe};
-        case FSUB:
-            return {nop_fetchOp, fsub_exe};
-        case DSUB:
-            return {nop_fetchOp, dsub_exe};
-        case IMUL:
-            return {nop_fetchOp, imul_exe};
-        case LMUL:
-            return {nop_fetchOp, lmul_exe};
-        case FMUL:
-            return {nop_fetchOp, fmul_exe};
-        case DMUL:
-            return {nop_fetchOp, dmul_exe};
-        case IDIV:
-            return {nop_fetchOp, idiv_exe};
-        case LDIV:
-            return {nop_fetchOp, ldiv_exe};
-        case FDIV:
-            return {nop_fetchOp, fdiv_exe};
-        case DDIV:
-            return {nop_fetchOp, ddiv_exe};
-        case IREM:
-            return {nop_fetchOp, irem_exe};
-        case LREM:
-            return {nop_fetchOp, lrem_exe};
-        case FREM:
-            return {nop_fetchOp, frem_exe};
-        case DREM:
-            return {nop_fetchOp, drem_exe};
-        case INEG:
-            return {nop_fetchOp, ineg_exe};
-        case LNEG:
-            return {nop_fetchOp, lneg_exe};
-        case FNEG:
-            return {nop_fetchOp, fneg_exe};
-        case DNEG:
-            return {nop_fetchOp, dneg_exe};
-        case ISHL:
-            return {nop_fetchOp, ishl_exe};
-        case LSHL:
-            return {nop_fetchOp, lshl_exe};
-        case ISHR:
-            return {nop_fetchOp, ishr_exe};
-        case LSHR:
-            return {nop_fetchOp, lshr_exe};
-        case IUSHR:
-            return {nop_fetchOp, iushr_exe};
-        case LUSHR:
-            return {nop_fetchOp, lushr_exe};
-        case IAND:
-            return {nop_fetchOp, iand_exe};
-        case LAND:
-            return {nop_fetchOp, land_exe};
-        case IOR:
-            return {nop_fetchOp, ior_exe};
-        case LOR:
-            return {nop_fetchOp, lor_exe};
-        case IXOR:
-            return {nop_fetchOp, ixor_exe};
-        case LXOR:
-            return {nop_fetchOp, lxor_exe};
-        case IINC:
-            return {nop_fetchOp, iinc_exe};
-        case I2L:
-            return {nop_fetchOp, i2l_exe};
-        case I2F:
-            return {nop_fetchOp, i2f_exe};
-        case I2D:
-            return {nop_fetchOp, i2d_exe};
-        case L2I:
-            return {nop_fetchOp, l2i_exe};
-        case L2F:
-            return {nop_fetchOp, l2f_exe};
-        case L2D:
-            return {nop_fetchOp, l2d_exe};
-        case F2I:
-            return {nop_fetchOp, f2i_exe};
-        case F2L:
-            return {nop_fetchOp, f2l_exe};
-        case F2D:
-            return {nop_fetchOp, f2d_exe};
-        case D2I:
-            return {nop_fetchOp, d2i_exe};
-        case D2L:
-            return {nop_fetchOp, d2l_exe};
-        case D2F:
-            return {nop_fetchOp, d2f_exe};
-        case I2B:
-            return {nop_fetchOp, i2b_exe};
-        case I2C:
-            return {nop_fetchOp, i2c_exe};
-        case I2S:
-            return {nop_fetchOp, i2s_exe};
-        case LCMP:
-            return {nop_fetchOp, lcmp_exe};
-        case FCMPL:
-            return {nop_fetchOp, fcmpl_exe};
-        case FCMPG:
-            return {nop_fetchOp, fcmpg_exe};
-        case DCMPL:
-            return {nop_fetchOp, dcmpl_exe};
-        case DCMPG:
-            return {nop_fetchOp, dcmpg_exe};
-        case IFEQ:
-            return {branch_fetchOp, ifeq_exe};
-        case IFNE:
-            return {branch_fetchOp, ifne_exe};
-        case IFLT:
-            return {branch_fetchOp, iflt_exe};
-        case IFGE:
-            return {branch_fetchOp, ifge_exe};
-        case IFGT:
-            return {branch_fetchOp, ifgt_exe};
-        case IFLE:
-            return {branch_fetchOp, ifle_exe};
-        case IF_ICMPEQ:
-            return {nop_fetchOp, if_icmpeq_exe};
-        case IF_ICMPNE:
-            return {nop_fetchOp, if_icmpne_exe};
-        case IF_ICMPLT:
-            return {nop_fetchOp, if_icmplt_exe};
-        case IF_ICMPGE:
-            return {nop_fetchOp, if_icmpge_exe};
-        case IF_ICMPGT:
-            return {nop_fetchOp, if_icmpgt_exe};
-        case IF_ICMPLE:
-            return {nop_fetchOp, if_icmple_exe};
-        case IF_ACMPEQ:
-            return {nop_fetchOp, if_acmpeq_exe};
-        case IF_ACMPNE:
-            return {nop_fetchOp, if_acmpne_exe};
-        case GOTO:
-            return {nop_fetchOp, goto_exe};
-        case JSR:
-            return {nop_fetchOp, jsr_exe};
-        case RET:
-            return {nop_fetchOp, ret_exe};
-        case TABLESWITCH:
-            return {nop_fetchOp, tableswitch_exe};
-        case LOOKUPSWITCH:
-            return {nop_fetchOp, lookupswitch_exe};
-        case IRETURN:
-            return {nop_fetchOp, ireturn_exe};
-        case LRETURN:
-            return {nop_fetchOp, lreturn_exe};
-        case FRETURN:
-            return {nop_fetchOp, freturn_exe};
-        case DRETURN:
-            return {nop_fetchOp, dreturn_exe};
-        case ARETURN:
-            return {nop_fetchOp, areturn_exe};
-        case RETURN:
-            return {nop_fetchOp, return_exe};
-        case GETSTATIC:
-            return {nop_fetchOp, getstatic_exe};
-        case PUTSTATIC:
-            return {nop_fetchOp, putstatic_exe};
-        case GETFIELD:
-            return {nop_fetchOp, getfield_exe};
-        case PUTFIELD:
-            return {nop_fetchOp, putfield_exe};
-        case INVOKEVIRTUAL:
-            return {nop_fetchOp, invokevirtual_exe};
-        case INVOKESPECIAL:
-            return {nop_fetchOp, invokespecial_exe};
-        case INVOKESTATIC:
-            return {nop_fetchOp, invokestatic_exe};
-        case INVOKEINTERFACE:
-            return {nop_fetchOp, invokeinterface_exe};
-        case INVOKEDYNAMIC:
-            return {nop_fetchOp, invokedynamic_exe};
-        case NEW:
-            return {nop_fetchOp, new_exe};
-        case NEWARRAY:
-            return {nop_fetchOp, newarray_exe};
-        case ANEWARRAY:
-            return {nop_fetchOp, anewarray_exe};
-        case ARRAYLENGTH:
-            return {nop_fetchOp, arraylength_exe};
-        case ATHROW:
-            return {nop_fetchOp, athrow_exe};
-        case CHECKCAST:
-            return {nop_fetchOp, checkcast_exe};
-        case INSTANCEOF:
-            return {nop_fetchOp, instanceof_exe};
-        case MONITORENTER:
-            return {nop_fetchOp, monitorenter_exe};
-        case MONITOREXIT:
-            return {nop_fetchOp, monitorexit_exe};
-        case WIDE:
-            return {nop_fetchOp, wide_exe};
-        case MULTIANEWARRAY:
-            return {nop_fetchOp, multianewarray_exe};
-        case IFNULL:
-            return {branch_fetchOp, ifnull_exe};
-        case IFNONNULL:
-            return {branch_fetchOp, ifnonnull_exe};
-        case GOTO_W:
-            return {nop_fetchOp, goto_w_exe};
-        case JSR_W:
-            return {nop_fetchOp, jsr_w_exe};
-        // TODO
-    }
+    struct Instruction inst;
+    inst.fetchOperands = fetchOperands;
+    inst.execute = execute;
+    return inst;
+}
+
+struct Instruction newInstruction(u1 opcode)
+{
+        if (NOP == opcode) {
+            return makeInstruction(nop_fetchOp, nop_exe);
+        } else if (ACONST_NULL == opcode) {
+            return makeInstruction(nop_fetchOp, aconst_null_exe);
+        } else if (ICONST_M1 == opcode) {
+            return makeInstruction(nop_fetchOp, iconst_m1_exe);
+        } else if (ICONST_0 == opcode) {
+            return makeInstruction(nop_fetchOp, iconst_0_exe);
+        } else if (ICONST_1 == opcode) {
+            return makeInstruction(nop_fetchOp, iconst_1_exe);
+        } else if (ICONST_2 == opcode) {
+            return makeInstruction(nop_fetchOp, iconst_2_exe);
+        } else if (ICONST_3 == opcode) {
+            return makeInstruction(nop_fetchOp, iconst_3_exe);
+        } else if (ICONST_4 == opcode) {
+            return makeInstruction(nop_fetchOp, iconst_4_exe);
+        } else if (ICONST_5 == opcode) {
+            return makeInstruction(nop_fetchOp, iconst_5_exe);
+        } else if (LCONST_0 == opcode) {
+            return makeInstruction(nop_fetchOp, lconst_0_exe);
+        } else if (LCONST_1 == opcode) {
+            return makeInstruction(nop_fetchOp, lconst_1_exe);
+        } else if (FCONST_0 == opcode) {
+            return makeInstruction(nop_fetchOp, fconst_0_exe);
+        } else if (FCONST_1 == opcode) {
+            return makeInstruction(nop_fetchOp, fconst_1_exe);
+        } else if (FCONST_2 == opcode) {
+            return makeInstruction(nop_fetchOp, fconst_2_exe);
+        } else if (DCONST_0 == opcode) {
+            return makeInstruction(nop_fetchOp, dconst_0_exe);
+        } else if (DCONST_1 == opcode) {
+            return makeInstruction(nop_fetchOp, dconst_1_exe);
+        } else if (BIPUSH == opcode) {
+            return makeInstruction(bipush_fetchOp, bipush_exe);
+        } else if (SIPUSH == opcode) {
+            return makeInstruction(sipush_fetchOp, sipush_exe);
+        } else if (LDC == opcode) {
+            return makeInstruction(nop_fetchOp, ldc_exe);
+        } else if (LDC_W == opcode) {
+            return makeInstruction(nop_fetchOp, ldc_w_exe);
+        } else if (LDC2_W == opcode) {
+            return makeInstruction(nop_fetchOp, ldc2_w_exe);
+        } else if (ILOAD == opcode) {
+            return makeInstruction(index8_fetchOp, iload_exe);
+        } else if (LLOAD == opcode) {
+            return makeInstruction(nop_fetchOp, lload_exe);
+        } else if (FLOAD == opcode) {
+            return makeInstruction(nop_fetchOp, fload_exe);
+        } else if (DLOAD == opcode) {
+            return makeInstruction(nop_fetchOp, dload_exe);
+        } else if (ALOAD == opcode) {
+            return makeInstruction(nop_fetchOp, aload_exe);
+        } else if (ILOAD_0 == opcode) {
+            return makeInstruction(nop_fetchOp, iload_0_exe);
+        } else if (ILOAD_1 == opcode) {
+            return makeInstruction(nop_fetchOp, iload_1_exe);
+        } else if (ILOAD_2 == opcode) {
+            return makeInstruction(nop_fetchOp, iload_2_exe);
+        } else if (ILOAD_3 == opcode) {
+            return makeInstruction(nop_fetchOp, iload_3_exe);
+        } else if (LLOAD_0 == opcode) {
+            return makeInstruction(nop_fetchOp, lload_0_exe);
+        } else if (LLOAD_1 == opcode) {
+            return makeInstruction(nop_fetchOp, lload_1_exe);
+        } else if (LLOAD_2 == opcode) {
+            return makeInstruction(nop_fetchOp, lload_2_exe);
+        } else if (LLOAD_3 == opcode) {
+            return makeInstruction(nop_fetchOp, lload_3_exe);
+        } else if (FLOAD_0 == opcode) {
+            return makeInstruction(nop_fetchOp, fload_0_exe);
+        } else if (FLOAD_1 == opcode) {
+            return makeInstruction(nop_fetchOp, fload_1_exe);
+        } else if (FLOAD_2 == opcode) {
+            return makeInstruction(nop_fetchOp, fload_2_exe);
+        } else if (FLOAD_3 == opcode) {
+            return makeInstruction(nop_fetchOp, fload_3_exe);
+        } else if (DLOAD_0 == opcode) {
+            return makeInstruction(nop_fetchOp, dload_0_exe);
+        } else if (DLOAD_1 == opcode) {
+            return makeInstruction(nop_fetchOp, dload_1_exe);
+        } else if (DLOAD_2 == opcode) {
+            return makeInstruction(nop_fetchOp, dload_2_exe);
+        } else if (DLOAD_3 == opcode) {
+            return makeInstruction(nop_fetchOp, dload_3_exe);
+        } else if (ALOAD_0 == opcode) {
+            return makeInstruction(nop_fetchOp, aload_0_exe);
+        } else if (ALOAD_1 == opcode) {
+            return makeInstruction(nop_fetchOp, aload_1_exe);
+        } else if (ALOAD_2 == opcode) {
+            return makeInstruction(nop_fetchOp, aload_2_exe);
+        } else if (ALOAD_3 == opcode) {
+            return makeInstruction(nop_fetchOp, aload_3_exe);
+        } else if (IALOAD == opcode) {
+            return makeInstruction(nop_fetchOp, iaload_exe);
+        } else if (LALOAD == opcode) {
+            return makeInstruction(nop_fetchOp, laload_exe);
+        } else if (FALOAD == opcode) {
+            return makeInstruction(nop_fetchOp, faload_exe);
+        } else if (DALOAD == opcode) {
+            return makeInstruction(nop_fetchOp, daload_exe);
+        } else if (AALOAD == opcode) {
+            return makeInstruction(nop_fetchOp, aaload_exe);
+        } else if (BALOAD == opcode) {
+            return makeInstruction(nop_fetchOp, baload_exe);
+        } else if (CALOAD == opcode) {
+            return makeInstruction(nop_fetchOp, caload_exe);
+        } else if (SALOAD == opcode) {
+            return makeInstruction(nop_fetchOp, saload_exe);
+        } else if (ISTORE == opcode) {
+            return makeInstruction(index8_fetchOp, istore_exe);
+        } else if (LSTORE == opcode) {
+            return makeInstruction(nop_fetchOp, lstore_exe);
+        } else if (FSTORE == opcode) {
+            return makeInstruction(nop_fetchOp, fstore_exe);
+        } else if (DSTORE == opcode) {
+            return makeInstruction(nop_fetchOp, dstore_exe);
+        } else if (ASTORE == opcode) {
+            return makeInstruction(nop_fetchOp, astore_exe);
+        } else if (ISTORE_0 == opcode) {
+            return makeInstruction(nop_fetchOp, istore_0_exe);
+        } else if (ISTORE_1 == opcode) {
+            return makeInstruction(nop_fetchOp, istore_1_exe);
+        } else if (ISTORE_2 == opcode) {
+            return makeInstruction(nop_fetchOp, istore_2_exe);
+        } else if (ISTORE_3 == opcode) {
+            return makeInstruction(nop_fetchOp, istore_3_exe);
+        } else if (LSTORE_0 == opcode) {
+            return makeInstruction(nop_fetchOp, lstore_0_exe);
+        } else if (LSTORE_1 == opcode) {
+            return makeInstruction(nop_fetchOp, lstore_1_exe);
+        } else if (LSTORE_2 == opcode) {
+            return makeInstruction(nop_fetchOp, lstore_2_exe);
+        } else if (LSTORE_3 == opcode) {
+            return makeInstruction(nop_fetchOp, lstore_3_exe);
+        } else if (FSTORE_0 == opcode) {
+            return makeInstruction(nop_fetchOp, fstore_0_exe);
+        } else if (FSTORE_1 == opcode) {
+            return makeInstruction(nop_fetchOp, fstore_1_exe);
+        } else if (FSTORE_2 == opcode) {
+            return makeInstruction(nop_fetchOp, fstore_2_exe);
+        } else if (FSTORE_3 == opcode) {
+            return makeInstruction(nop_fetchOp, fstore_3_exe);
+        } else if (DSTORE_0 == opcode) {
+            return makeInstruction(nop_fetchOp, dstore_0_exe);
+        } else if (DSTORE_1 == opcode) {
+            return makeInstruction(nop_fetchOp, dstore_1_exe);
+        } else if (DSTORE_2 == opcode) {
+            return makeInstruction(nop_fetchOp, dstore_2_exe);
+        } else if (DSTORE_3 == opcode) {
+            return makeInstruction(nop_fetchOp, dstore_3_exe);
+        } else if (ASTORE_0 == opcode) {
+            return makeInstruction(nop_fetchOp, astore_0_exe);
+        } else if (ASTORE_1 == opcode) {
+            return makeInstruction(nop_fetchOp, astore_1_exe);
+        } else if (ASTORE_2 == opcode) {
+            return makeInstruction(nop_fetchOp, astore_2_exe);
+        } else if (ASTORE_3 == opcode) {
+            return makeInstruction(nop_fetchOp, astore_3_exe);
+        } else if (IASTORE == opcode) {
+            return makeInstruction(nop_fetchOp, iastore_exe);
+        } else if (LASTORE == opcode) {
+            return makeInstruction(nop_fetchOp, lastore_exe);
+        } else if (FASTORE == opcode) {
+            return makeInstruction(nop_fetchOp, fastore_exe);
+        } else if (DASTORE == opcode) {
+            return makeInstruction(nop_fetchOp, dastore_exe);
+        } else if (AASTORE == opcode) {
+            return makeInstruction(nop_fetchOp, aastore_exe);
+        } else if (BASTORE == opcode) {
+            return makeInstruction(nop_fetchOp, bastore_exe);
+        } else if (CASTORE == opcode) {
+            return makeInstruction(nop_fetchOp, castore_exe);
+        } else if (SASTORE == opcode) {
+            return makeInstruction(nop_fetchOp, sastore_exe);
+        } else if (POP == opcode) {
+            return makeInstruction(nop_fetchOp, pop_exe);
+        } else if (POP2 == opcode) {
+            return makeInstruction(nop_fetchOp, pop2_exe);
+        } else if (DUP == opcode) {
+            return makeInstruction(nop_fetchOp, dup_exe);
+        } else if (DUP_X1 == opcode) {
+            return makeInstruction(nop_fetchOp, dup_x1_exe);
+        } else if (DUP_X2 == opcode) {
+            return makeInstruction(nop_fetchOp, dup_x2_exe);
+        } else if (DUP2 == opcode) {
+            return makeInstruction(nop_fetchOp, dup2_exe);
+        } else if (DUP2_X1 == opcode) {
+            return makeInstruction(nop_fetchOp, dup2_x1_exe);
+        } else if (DUP2_X2 == opcode) {
+            return makeInstruction(nop_fetchOp, dup2_x2_exe);
+        } else if (SWAP == opcode) {
+            return makeInstruction(nop_fetchOp, swap_exe);
+        } else if (IADD == opcode) {
+            return makeInstruction(nop_fetchOp, iadd_exe);
+        } else if (LADD == opcode) {
+            return makeInstruction(nop_fetchOp, ladd_exe);
+        } else if (FADD == opcode) {
+            return makeInstruction(nop_fetchOp, fadd_exe);
+        } else if (DADD == opcode) {
+            return makeInstruction(nop_fetchOp, dadd_exe);
+        } else if (ISUB == opcode) {
+            return makeInstruction(nop_fetchOp, isub_exe);
+        } else if (LSUB == opcode) {
+            return makeInstruction(nop_fetchOp, lsub_exe);
+        } else if (FSUB == opcode) {
+            return makeInstruction(nop_fetchOp, fsub_exe);
+        } else if (DSUB == opcode) {
+            return makeInstruction(nop_fetchOp, dsub_exe);
+        } else if (IMUL == opcode) {
+            return makeInstruction(nop_fetchOp, imul_exe);
+        } else if (LMUL == opcode) {
+            return makeInstruction(nop_fetchOp, lmul_exe);
+        } else if (FMUL == opcode) {
+            return makeInstruction(nop_fetchOp, fmul_exe);
+        } else if (DMUL == opcode) {
+            return makeInstruction(nop_fetchOp, dmul_exe);
+        } else if (IDIV == opcode) {
+            return makeInstruction(nop_fetchOp, idiv_exe);
+        } else if (LDIV == opcode) {
+            return makeInstruction(nop_fetchOp, ldiv_exe);
+        } else if (FDIV == opcode) {
+            return makeInstruction(nop_fetchOp, fdiv_exe);
+        } else if (DDIV == opcode) {
+            return makeInstruction(nop_fetchOp, ddiv_exe);
+        } else if (IREM == opcode) {
+            return makeInstruction(nop_fetchOp, irem_exe);
+        } else if (LREM == opcode) {
+            return makeInstruction(nop_fetchOp, lrem_exe);
+        } else if (FREM == opcode) {
+            return makeInstruction(nop_fetchOp, frem_exe);
+        } else if (DREM == opcode) {
+            return makeInstruction(nop_fetchOp, drem_exe);
+        } else if (INEG == opcode) {
+            return makeInstruction(nop_fetchOp, ineg_exe);
+        } else if (LNEG == opcode) {
+            return makeInstruction(nop_fetchOp, lneg_exe);
+        } else if (FNEG == opcode) {
+            return makeInstruction(nop_fetchOp, fneg_exe);
+        } else if (DNEG == opcode) {
+            return makeInstruction(nop_fetchOp, dneg_exe);
+        } else if (ISHL == opcode) {
+            return makeInstruction(nop_fetchOp, ishl_exe);
+        } else if (LSHL == opcode) {
+            return makeInstruction(nop_fetchOp, lshl_exe);
+        } else if (ISHR == opcode) {
+            return makeInstruction(nop_fetchOp, ishr_exe);
+        } else if (LSHR == opcode) {
+            return makeInstruction(nop_fetchOp, lshr_exe);
+        } else if (IUSHR == opcode) {
+            return makeInstruction(nop_fetchOp, iushr_exe);
+        } else if (LUSHR == opcode) {
+            return makeInstruction(nop_fetchOp, lushr_exe);
+        } else if (IAND == opcode) {
+            return makeInstruction(nop_fetchOp, iand_exe);
+        } else if (LAND == opcode) {
+            return makeInstruction(nop_fetchOp, land_exe);
+        } else if (IOR == opcode) {
+            return makeInstruction(nop_fetchOp, ior_exe);
+        } else if (LOR == opcode) {
+            return makeInstruction(nop_fetchOp, lor_exe);
+        } else if (IXOR == opcode) {
+            return makeInstruction(nop_fetchOp, ixor_exe);
+        } else if (LXOR == opcode) {
+            return makeInstruction(nop_fetchOp, lxor_exe);
+        } else if (IINC == opcode) {
+            return makeInstruction(nop_fetchOp, iinc_exe);
+        } else if (I2L == opcode) {
+            return makeInstruction(nop_fetchOp, i2l_exe);
+        } else if (I2F == opcode) {
+            return makeInstruction(nop_fetchOp, i2f_exe);
+        } else if (I2D == opcode) {
+            return makeInstruction(nop_fetchOp, i2d_exe);
+        } else if (L2I == opcode) {
+            return makeInstruction(nop_fetchOp, l2i_exe);
+        } else if (L2F == opcode) {
+            return makeInstruction(nop_fetchOp, l2f_exe);
+        } else if (L2D == opcode) {
+            return makeInstruction(nop_fetchOp, l2d_exe);
+        } else if (F2I == opcode) {
+            return makeInstruction(nop_fetchOp, f2i_exe);
+        } else if (F2L == opcode) {
+            return makeInstruction(nop_fetchOp, f2l_exe);
+        } else if (F2D == opcode) {
+            return makeInstruction(nop_fetchOp, f2d_exe);
+        } else if (D2I == opcode) {
+            return makeInstruction(nop_fetchOp, d2i_exe);
+        } else if (D2L == opcode) {
+            return makeInstruction(nop_fetchOp, d2l_exe);
+        } else if (D2F == opcode) {
+            return makeInstruction(nop_fetchOp, d2f_exe);
+        } else if (I2B == opcode) {
+            return makeInstruction(nop_fetchOp, i2b_exe);
+        } else if (I2C == opcode) {
+            return makeInstruction(nop_fetchOp, i2c_exe);
+        } else if (I2S == opcode) {
+            return makeInstruction(nop_fetchOp, i2s_exe);
+        } else if (LCMP == opcode) {
+            return makeInstruction(nop_fetchOp, lcmp_exe);
+        } else if (FCMPL == opcode) {
+            return makeInstruction(nop_fetchOp, fcmpl_exe);
+        } else if (FCMPG == opcode) {
+            return makeInstruction(nop_fetchOp, fcmpg_exe);
+        } else if (DCMPL == opcode) {
+            return makeInstruction(nop_fetchOp, dcmpl_exe);
+        } else if (DCMPG == opcode) {
+            return makeInstruction(nop_fetchOp, dcmpg_exe);
+        } else if (IFEQ == opcode) {
+            return makeInstruction(branch_fetchOp, ifeq_exe);
+        } else if (IFNE == opcode) {
+            return makeInstruction(branch_fetchOp, ifne_exe);
+        } else if (IFLT == opcode) {
+            return makeInstruction(branch_fetchOp, iflt_exe);
+        } else if (IFGE == opcode) {
+            return makeInstruction(branch_fetchOp, ifge_exe);
+        } else if (IFGT == opcode) {
+            return makeInstruction(branch_fetchOp, ifgt_exe);
+        } else if (IFLE == opcode) {
+            return makeInstruction(branch_fetchOp, ifle_exe);
+        } else if (IF_ICMPEQ == opcode) {
+            return makeInstruction(nop_fetchOp, if_icmpeq_exe);
+        } else if (IF_ICMPNE == opcode) {
+            return makeInstruction(nop_fetchOp, if_icmpne_exe);
+        } else if (IF_ICMPLT == opcode) {
+            return makeInstruction(nop_fetchOp, if_icmplt_exe);
+        } else if (IF_ICMPGE == opcode) {
+            return makeInstruction(nop_fetchOp, if_icmpge_exe);
+        } else if (IF_ICMPGT == opcode) {
+            return makeInstruction(nop_fetchOp, if_icmpgt_exe);
+        } else if (IF_ICMPLE == opcode) {
+            return makeInstruction(nop_fetchOp, if_icmple_exe);
+        } else if (IF_ACMPEQ == opcode) {
+            return makeInstruction(nop_fetchOp, if_acmpeq_exe);
+        } else if (IF_ACMPNE == opcode) {
+            return makeInstruction(nop_fetchOp, if_acmpne_exe);
+        } else if (GOTO == opcode) {
+            return makeInstruction(nop_fetchOp, goto_exe);
+        } else if (JSR == opcode) {
+            return makeInstruction(nop_fetchOp, jsr_exe);
+        } else if (RET == opcode) {
+            return makeInstruction(nop_fetchOp, ret_exe);
+        } else if (TABLESWITCH == opcode) {
+            return makeInstruction(nop_fetchOp, tableswitch_exe);
+        } else if (LOOKUPSWITCH == opcode) {
+            return makeInstruction(nop_fetchOp, lookupswitch_exe);
+        } else if (IRETURN == opcode) {
+            return makeInstruction(nop_fetchOp, ireturn_exe);
+        } else if (LRETURN == opcode) {
+            return makeInstruction(nop_fetchOp, lreturn_exe);
+        } else if (FRETURN == opcode) {
+            return makeInstruction(nop_fetchOp, freturn_exe);
+        } else if (DRETURN == opcode) {
+            return makeInstruction(nop_fetchOp, dreturn_exe);
+        } else if (ARETURN == opcode) {
+            return makeInstruction(nop_fetchOp, areturn_exe);
+        } else if (RETURN == opcode) {
+            return makeInstruction(nop_fetchOp, return_exe);
+        } else if (GETSTATIC == opcode) {
+            return makeInstruction(nop_fetchOp, getstatic_exe);
+        } else if (PUTSTATIC == opcode) {
+            return makeInstruction(nop_fetchOp, putstatic_exe);
+        } else if (GETFIELD == opcode) {
+            return makeInstruction(nop_fetchOp, getfield_exe);
+        } else if (PUTFIELD == opcode) {
+            return makeInstruction(nop_fetchOp, putfield_exe);
+        } else if (INVOKEVIRTUAL == opcode) {
+            return makeInstruction(nop_fetchOp, invokevirtual_exe);
+        } else if (INVOKESPECIAL == opcode) {
+            return makeInstruction(nop_fetchOp, invokespecial_exe);
+        } else if (INVOKESTATIC == opcode) {
+            return makeInstruction(nop_fetchOp, invokestatic_exe);
+        } else if (INVOKEINTERFACE == opcode) {
+            return makeInstruction(nop_fetchOp, invokeinterface_exe);
+        } else if (INVOKEDYNAMIC == opcode) {
+            return makeInstruction(nop_fetchOp, invokedynamic_exe);
+        } else if (NEW == opcode) {
+            return makeInstruction(nop_fetchOp, new_exe);
+        } else if (NEWARRAY == opcode) {
+            return makeInstruction(nop_fetchOp, newarray_exe);
+        } else if (ANEWARRAY == opcode) {
+            return makeInstruction(nop_fetchOp, anewarray_exe);
+        } else if (ARRAYLENGTH == opcode) {
+            return makeInstruction(nop_fetchOp, arraylength_exe);
+        } else if (ATHROW == opcode) {
+            return makeInstruction(nop_fetchOp, athrow_exe);
+        } else if (CHECKCAST == opcode) {
+            return makeInstruction(nop_fetchOp, checkcast_exe);
+        } else if (INSTANCEOF == opcode) {
+            return makeInstruction(nop_fetchOp, instanceof_exe);
+        } else if (MONITORENTER == opcode) {
+            return makeInstruction(nop_fetchOp, monitorenter_exe);
+        } else if (MONITOREXIT == opcode) {
+            return makeInstruction(nop_fetchOp, monitorexit_exe);
+        } else if (WIDE == opcode) {
+            return makeInstruction(nop_fetchOp, wide_exe);
+        } else if (MULTIANEWARRAY == opcode) {
+            return makeInstruction(nop_fetchOp, multianewarray_exe);
+        } else if (IFNULL == opcode) {
+            return makeInstruction(branch_fetchOp, ifnull_exe);
+        } else if (IFNONNULL == opcode) {
+            return makeInstruction(branch_fetchOp, ifnonnull_exe);
+        } else if (GOTO_W == opcode) {
+            return makeInstruction(nop_fetchOp, goto_w_exe);
+        } else if (JSR_W == opcode) {
+            return makeInstruction(nop_fetchOp, jsr_w_exe);
+        } else  {
+            // TODO
+        }
 }

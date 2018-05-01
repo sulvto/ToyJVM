@@ -5,43 +5,14 @@
 //
 
 #include <stddef.h>
+#include "rtda.h"
 
-struct Object {
-    // TODO
-};
+struct Thread *newThread()
+{
+    struct Thread *thread = (struct Thread *) malloc(sizeof(struct Thread));
+    return thread;
+}
 
-struct Slot {
-    int             num;
-    struct Object   *ref;
-};
-
-struct LocalVars {
-    unsigned int size;
-    unsigned int max;
-    struct Slot *value;
-};
-
-struct OperandStack {
-    unsigned int size;
-    struct Slot *slot;
-};
-
-struct Frame {
-    struct Frame        *next;
-    struct Slot         *localVars;
-    struct OperandStack *operand_stack;
-};
-
-struct Stack {
-    unsigned int max_size;
-    unsigned int size;
-    struct Frame *frame;
-};
-
-struct Thread {
-    int          pc;
-    struct Stack *stack;
-};
 
 struct LocalVars *newLocalVars(const unsigned int max)
 {
@@ -60,11 +31,12 @@ struct OperandStack *newOperandStack(const unsigned int max)
     return operand_stack;
 }
 
-struct Frame *newFrame(const unsigned int maxLocalVars, const unsigned int maxStack)
+struct Frame *newFrame(const unsigned int maxLocalVars, const unsigned int maxStack, struct Thread *thread)
 {
     struct Frame *frame = (struct Frame *) malloc(sizeof(struct Frame));
     frame->localVars = newLocalVars(maxLocalVars);
     frame->operand_stack = newOperandStack(maxStack);
+    frame->thread = thread;
     return frame;
 }
 
@@ -122,6 +94,13 @@ void pushRef(const struct Object *value, struct OperandStack *operandStack)
     operandStack->slot[operandStack->size++].ref = value;
 }
 
+void pushSlot(const struct Slot slot, struct OperandStack *operandStack)
+{
+    struct Slot *slot = &operandStack->slot[operandStack->size++];
+    slot->num = slot->num;
+    slot->ref = slot->ref;
+}
+
 int popInt(struct OperandStack *operandStack)
 {
     return operandStack->slot[--operandStack->size].num;
@@ -150,12 +129,15 @@ double popDouble(struct OperandStack *operandStack)
     return 0;
 }
 
-
 struct Object *popRef(struct OperandStack *operandStack)
 {
     return operandStack->slot[--operandStack->size].ref;
 }
 
+struct Slot popSlot(struct OperandStack *operandStack)
+{
+    return operandStack->slot[--operandStack->size];
+}
 
 void setInt(const unsigned int index, int value, struct LocalVars *localVars)
 {
@@ -259,13 +241,13 @@ void testOperandStack(struct OperandStack *operandStack)
 }
 
 
-int main()
-{
-    struct Frame *frame = newFrame(100, 100);
-    struct LocalVars *localVars = frame->localVars;
-    struct OperandStack *operandStack = frame->operand_stack;
-    printf("testLocalVars \n");
-    testLocalVars(localVars);
-    printf("testLocalVars \n");
-    testOperandStack(operandStack);
-}
+// int main()
+// {
+//     struct Frame *frame = newFrame(100, 100);
+//     struct LocalVars *localVars = frame->localVars;
+//     struct OperandStack *operandStack = frame->operand_stack;
+//     printf("testLocalVars \n");
+//     testLocalVars(localVars);
+//     printf("testLocalVars \n");
+//     testOperandStack(operandStack);
+// }

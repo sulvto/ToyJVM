@@ -84,11 +84,11 @@ int main(int argc, char **argv)
 //
 //	OptInit(argv, options, stderr);
 
-	struct s_class_data class_data = readClass("Test.class");
-	struct ClassFile _class = parseClass(&class_data);
-	printClassInfo(&_class);
+	struct s_class_data class_data = readClassFile("Test.class");
+	struct ClassFile class_file = parseClassContent(&class_data);
+	printClassInfo(&class_file);
 
-	struct MemberInfo *mainMethod = getMainMethod(&_class);
+	struct MemberInfo *mainMethod = getMainMethod(&class_file);
 
 	if (mainMethod != NULL) {
 		interpret(mainMethod);

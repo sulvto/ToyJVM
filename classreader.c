@@ -69,24 +69,24 @@ u2 *readU2s(struct s_class_data *class_data)
 
 
 
-void readAndCheckMagic(struct s_class_data *class_data, struct ClassFile *_class)
+void readAndCheckMagic(struct s_class_data *class_data, struct ClassFile *class_file)
 {
-	_class->magic = readU4(class_data);
+	class_file->magic = readU4(class_data);
 
     // 16 -> 10
     // CAFEBABE -> 3405691582
-	if (_class->magic != 3405691582) {
+	if (class_file->magic != 3405691582) {
 		printf("Class format error: magic!\n");
 		exit(1);
 	}
 }
 
-void readAndCheckVersion(struct s_class_data *class_data, struct ClassFile *_class)
+void readAndCheckVersion(struct s_class_data *class_data, struct ClassFile *class_file)
 {
-	_class->minor_version = readU2(class_data);
-	_class->major_version = readU2(class_data);
+	class_file->minor_version = readU2(class_data);
+	class_file->major_version = readU2(class_data);
 
-	switch (_class->major_version) {
+	switch (class_file->major_version) {
         case 45:
             break;
         case 46:
@@ -98,25 +98,25 @@ void readAndCheckVersion(struct s_class_data *class_data, struct ClassFile *_cla
         case 52:
         case 53:
         case 54:
-            if (_class->minor_version == 0) {
+            if (class_file->minor_version == 0) {
                 break;
             }
         default:
-            printf("Un supported class version(%u.%u) error!\n", _class->major_version, _class->minor_version);
+            printf("Un supported class version(%u.%u) error!\n", class_file->major_version, class_file->minor_version);
             exit(1);
     }
 
 }
 
-void readConstantPool(struct s_class_data *class_data, struct ClassFile *_class)
+void readConstantPool(struct s_class_data *class_data, struct ClassFile *class_file)
 {
-    u2 count = _class->constant_pool_count = readU2(class_data);
-    _class->constant_pool = (struct ConstantPoolInfo*) malloc(sizeof(struct ConstantPoolInfo) * count);
+    u2 count = class_file->constant_pool_count = readU2(class_data);
+    class_file->constant_pool = (struct ConstantPoolInfo*) malloc(sizeof(struct ConstantPoolInfo) * count);
 
     u2 index = 0;
     for (int i = 1; i < count; i++) {
 
-        struct ConstantPoolInfo *cp_info = &_class->constant_pool[index++];
+        struct ConstantPoolInfo *cp_info = &class_file->constant_pool[index++];
         u1 tag = cp_info->tag = readU1(class_data);
 
         union ConstantInfo *constantInfo = &cp_info->info;
@@ -278,32 +278,32 @@ struct MemberInfo readMember(struct s_class_data *class_data, const struct Const
     return memberInfo;
 }
 
-void readFields(const struct s_class_data *class_data, struct ClassFile *_class)
+void readFields(const struct s_class_data *class_data, struct ClassFile *class_file)
 {
-    int count = _class->fields_count = readU2(class_data);
+    int count = class_file->fields_count = readU2(class_data);
 
-    _class->fields = (struct MemberInfo *) malloc(sizeof(struct MemberInfo) * count);
+    class_file->fields = (struct MemberInfo *) malloc(sizeof(struct MemberInfo) * count);
 
     for (int i=0; i<count; i++) {
-        _class->fields[i] = readMember(class_data, _class->constant_pool);
+        class_file->fields[i] = readMember(class_data, class_file->constant_pool);
     }
 
 }
 
-void readMethods(const struct s_class_data *class_data, struct ClassFile *_class)
+void readMethods(const struct s_class_data *class_data, struct ClassFile *class_file)
 {
-    int count = _class->methods_count = readU2(class_data);
+    int count = class_file->methods_count = readU2(class_data);
 
-    _class->methods = (struct MemberInfo *) malloc(sizeof(struct MemberInfo) * count);
+    class_file->methods = (struct MemberInfo *) malloc(sizeof(struct MemberInfo) * count);
 
     for (int i=0; i<count; i++) {
-        _class->methods[i] = readMember(class_data, _class->constant_pool);
+        class_file->methods[i] = readMember(class_data, class_file->constant_pool);
     }
 
 }
 
 
-struct s_class_data readClass(const char *className)
+struct s_class_data readClassFile(const char *className)
 {
     FILE *f;
     f = fopen(className, "r");
@@ -320,27 +320,27 @@ struct s_class_data readClass(const char *className)
     return class_data;
 }
 
-struct ClassFile parseClass(struct s_class_data *class_data)
+struct ClassFile parseClassContent(struct s_class_data *class_data)
 {
-	struct ClassFile _class;
-	readAndCheckMagic(class_data, &_class);
-	readAndCheckVersion(class_data, &_class);
-    readConstantPool(class_data, &_class);
-    _class.access_flags = readU2(class_data);
-    _class.this_class = readU2(class_data);
-    _class.super_class = readU2(class_data);
-    _class.interfaces_count = readU2(class_data);
+	struct ClassFile class_file;
+	readAndCheckMagic(class_data, &class_file);
+	readAndCheckVersion(class_data, &class_file);
+    readConstantPool(class_data, &class_file);
+    class_file.access_flags = readU2(class_data);
+    class_file.this_class = readU2(class_data);
+    class_file.super_class = readU2(class_data);
+    class_file.interfaces_count = readU2(class_data);
     // TODO interfaces
-    readFields(class_data, &_class);
-    readMethods(class_data, &_class);
-    _class.attributes_count = readU2(class_data);
-    _class.attributes = (union AttributeInfo *) malloc(sizeof(union AttributeInfo) * _class.attributes_count);
+    readFields(class_data, &class_file);
+    readMethods(class_data, &class_file);
+    class_file.attributes_count = readU2(class_data);
+    class_file.attributes = (union AttributeInfo *) malloc(sizeof(union AttributeInfo) * class_file.attributes_count);
 
-    for (int i = 0; i < _class.attributes_count; i++) {
-        _class.attributes [i] = readAttributes(class_data, _class.constant_pool);
+    for (int i = 0; i < class_file.attributes_count; i++) {
+        class_file.attributes [i] = readAttributes(class_data, class_file.constant_pool);
     }
 
-    return _class;
+    return class_file;
 }
 
 void utf8String(const struct CONSTANT_Utf8_info *utf8_info, char *c)
@@ -379,15 +379,15 @@ void attributeName(const u2 attribute_name_index, const struct ConstantPoolInfo 
 }
 
 
-void printClassInfo(struct ClassFile *_class) {
-    printf("version: %d.%d\n", _class->major_version, _class->minor_version);
-    printf("constants count: %u\n", _class->constant_pool_count);
-    printf("access flags: 0x%x\n", _class->access_flags);
-    printf("this class: %d\n", _class->this_class);
-    printf("super class: %d\n", _class->super_class);
-    printf("interfaces: %d\n", _class->interfaces_count);
-    printf("fields count: %d\n", _class->fields_count);
-    printf("methods count: %d\n", _class->methods_count);
+void printClassInfo(struct ClassFile *class_file) {
+    printf("version: %d.%d\n", class_file->major_version, class_file->minor_version);
+    printf("constants count: %u\n", class_file->constant_pool_count);
+    printf("access flags: 0x%x\n", class_file->access_flags);
+    printf("this class: %d\n", class_file->this_class);
+    printf("super class: %d\n", class_file->super_class);
+    printf("interfaces: %d\n", class_file->interfaces_count);
+    printf("fields count: %d\n", class_file->fields_count);
+    printf("methods count: %d\n", class_file->methods_count);
 }
 
 void printConstantPoolUtf8Info(struct ConstantPoolInfo *constant_pool, u2 count)
@@ -410,8 +410,6 @@ void printUtf8Info(struct ConstantPoolInfo *utf8)
     printUtf8(&utf8->info.utf8_info);
 }
 
-
-
 void printUtf8(struct CONSTANT_Utf8_info *utf8_info)
 {
     for (int j = 0; j < utf8_info->length; ++j) {
@@ -422,7 +420,7 @@ void printUtf8(struct CONSTANT_Utf8_info *utf8_info)
 
 // int main()
 //{
-//    struct s_class_data class_data = readClass("Test.class");
-//    struct ClassFile _class = parseClass(&class_data);
-//    printClassInfo(&_class);
+//    struct s_class_data class_data = readClassFile("Test.class");
+//    struct ClassFile class_file = parseClassContent(&class_data);
+//    printClassInfo(&class_file);
 //}

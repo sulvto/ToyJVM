@@ -167,9 +167,9 @@ struct s_class_data {
     int index;
 };
 
-struct s_class_data readClass(const char *);
+struct s_class_data readClassFile(const char *);
 
-struct ClassFile parseClass(struct s_class_data *class_data);
+struct ClassFile parseClassContent(struct s_class_data *class_data);
 
 void printClassInfo(struct ClassFile *);
 

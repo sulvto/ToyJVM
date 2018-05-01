@@ -5,8 +5,12 @@
 #ifndef TOYJVM_RTDA_H
 #define TOYJVM_RTDA_H
 
+#include "class.h"
+
 struct Object {
-    // TODO
+    struct Class *_class;
+    u4          field_count;
+    struct Slot *fields;
 };
 
 struct Slot {

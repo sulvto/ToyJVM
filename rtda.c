@@ -7,12 +7,23 @@
 #include <stddef.h>
 #include "rtda.h"
 
+struct Stack *newStack(const unsigned int size)
+{
+    struct Stack *stack = (struct Stack *) malloc(sizeof(struct Stack));
+    stack->max_size = size;
+    stack->size = 0;
+    stack->top = NULL;
+
+    return stack;
+}
+
 struct Thread *newThread()
 {
     struct Thread *thread = (struct Thread *) malloc(sizeof(struct Thread));
+    thread->stack = newStack(1024);
+    thread->pc = 0;
     return thread;
 }
-
 
 struct LocalVars *newLocalVars(const unsigned int max)
 {
@@ -40,30 +51,35 @@ struct Frame *newFrame(const unsigned int maxLocalVars, const unsigned int maxSt
     return frame;
 }
 
-
-void pushStack(struct Frame *frame, struct Stack *stack)
-{
-    // TODO
-}
-
-struct Stack *popStack(struct Stack *stack)
-{
-    // TODO
-}
-
-struct Stack *topStack(struct Stack *stack)
-{
-    // TODO
-}
-
 void pushFrame(struct Frame *frame, struct Thread *thread)
 {
-    // TODO
+    struct Stack *stack = thread->stack;
+
+    if (stack->size >= stack->max_size) {
+        // TODO
+        printf("StackOverflowError!");
+    }
+
+    if (stack->top != NULL) {
+        frame->next = stack->top;
+    }
+    stack->top = frame;
+    stack->size++;
 }
 
 struct Frame *popFrame(struct Thread *thread)
 {
-    // TODO
+    if (thread->stack->top == NULL) {
+        // TODO
+        printf("jvm stack is empty!\n");
+    }
+
+    struct Frame *top = thread->stack->top;
+    thread->stack->top = top->next;
+    thread->stack->size--;
+    top->next = NULL;
+
+    return top;
 }
 
 void pushInt(const int value, struct OperandStack *operandStack)

@@ -36,7 +36,7 @@ struct Frame {
 struct Stack {
     unsigned int max_size;
     unsigned int size;
-    struct Frame *frame;
+    struct Frame *top;
 };
 
 struct Thread {

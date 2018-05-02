@@ -205,26 +205,25 @@ struct ExceptionTable readExceptionTable(struct s_class_data *class_data)
 }
 
 
-union AttributeInfo readAttributes(struct s_class_data *class_data, const struct ConstantPoolInfo *constant_pool)
+struct AttributeInfo readAttributes(struct s_class_data *class_data, const struct ConstantPoolInfo *constant_pool)
 {
-    union AttributeInfo attributeInfo;
+    struct AttributeInfo attributeInfo;
 
     u2 attribute_name_index = readU2(class_data);
     u4 attribute_length = readU4(class_data);
+
+    attributeInfo.attribute_name_index = attribute_name_index;
+    attributeInfo.attribute_length = attribute_length;
 
     char attrName[1024];
     attributeName(attribute_name_index, constant_pool, &attrName);
 
     if (strcmp(ATTRIBUTE_ConstantValue, attrName) == 0) {
         struct ConstantValue_attributeInfo constantValue;
-        constantValue.attribute_name_index = attribute_name_index;
-        constantValue.attribute_length = attribute_length;
-        constantValue.constantValue_index = readU2(class_data);
-        attributeInfo.constantValue = constantValue;
-    }else if (strcmp(ATTRIBUTE_Code, attrName) == 0) {
+        constantValue.constant_value_index = readU2(class_data);
+        attributeInfo.info.constant_value = constantValue;
+    } else if (strcmp(ATTRIBUTE_Code, attrName) == 0) {
         struct Code_attributeInfo code;
-        code.attribute_name_index = attribute_name_index;
-        code.attribute_length = attribute_length;
         code.max_stack = readU2(class_data);
         code.max_locals = readU2(class_data);
         code.code_length = readU4(class_data);
@@ -239,23 +238,20 @@ union AttributeInfo readAttributes(struct s_class_data *class_data, const struct
             code.exceptionTable[j] = readExceptionTable(class_data);
         }
         code.attributes_count = readU2(class_data);
-        code.attributes = (union AttributeInfo *) malloc(sizeof(union AttributeInfo) * code.attributes_count);
+        code.attributes = (struct AttributeInfo *) malloc(sizeof(struct AttributeInfo) * code.attributes_count);
         for (int k = 0; k < code.attributes_count; ++k) {
             code.attributes[k] = readAttributes(class_data, constant_pool);
         }
-        attributeInfo.code = code;
+        attributeInfo.info.code = code;
     } else {
         struct Unparsed_attributeInfo unparsed;
-
-        unparsed.attribute_name_index = attribute_name_index;
-        unparsed.attribute_length = attribute_length;
 
         unparsed.info = (u1 *) malloc(sizeof(u1) * attribute_length);
 
         for (int i = 0; i < attribute_length; i++) {
             unparsed.info[i] = readU1(class_data);
         }
-        attributeInfo.unparsed = unparsed;
+        attributeInfo.info.unparsed = unparsed;
     }
 
     return attributeInfo;
@@ -269,7 +265,7 @@ struct MemberInfo readMember(struct s_class_data *class_data, const struct Const
     memberInfo.descriptor_index = readU2(class_data);
     memberInfo.attributes_count = readU2(class_data);
 
-    memberInfo.attributes = (union AttributeInfo *) malloc(sizeof(union AttributeInfo) * memberInfo.attributes_count);
+    memberInfo.attributes = (struct AttributeInfo *) malloc(sizeof(struct AttributeInfo) * memberInfo.attributes_count);
 
     for (int i = 0; i < memberInfo.attributes_count; i++) {
         memberInfo.attributes[i] = readAttributes(class_data, constantPool);
@@ -334,7 +330,7 @@ struct ClassFile parseClassContent(struct s_class_data *class_data)
     readFields(class_data, &class_file);
     readMethods(class_data, &class_file);
     class_file.attributes_count = readU2(class_data);
-    class_file.attributes = (union AttributeInfo *) malloc(sizeof(union AttributeInfo) * class_file.attributes_count);
+    class_file.attributes = (struct AttributeInfo *) malloc(sizeof(struct AttributeInfo) * class_file.attributes_count);
 
     for (int i = 0; i < class_file.attributes_count; i++) {
         class_file.attributes [i] = readAttributes(class_data, class_file.constant_pool);
@@ -366,10 +362,16 @@ struct CONSTANT_Utf8_info *utf8Info(const u2 index, const struct ConstantPoolInf
 }
 
 
-void methodName(const struct MemberInfo *method, const struct ConstantPoolInfo *constant_pool, char *name)
+void memberName(const struct MemberInfo *member, const struct ConstantPoolInfo *constant_pool, char *name)
 {
-    struct CONSTANT_Utf8_info *utf8_info = utf8Info(method->name_index, constant_pool);
+    struct CONSTANT_Utf8_info *utf8_info = utf8Info(member->name_index, constant_pool);
     utf8String(utf8_info, name);
+}
+
+void descriptor(const struct MemberInfo *member, const struct ConstantPoolInfo *constant_pool, char *desc)
+{
+    struct CONSTANT_Utf8_info *utf8_info = utf8Info(member->descriptor_index, constant_pool);
+    utf8String(utf8_info, desc);
 }
 
 void attributeName(const u2 attribute_name_index, const struct ConstantPoolInfo *constant_pool, char *name)
@@ -378,6 +380,18 @@ void attributeName(const u2 attribute_name_index, const struct ConstantPoolInfo 
     utf8String(utf8_info, name);
 }
 
+struct AttributeInfo *constantValueAttribute(const struct MemberInfo *member, struct ConstantPoolInfo *constant_pool)
+{
+    for (int i = 0; i < member->attributes_count; ++i) {
+        char name[512];
+        attributeName(member->attributes[i].attribute_name_index, constant_pool, name);
+        if (strcmp(ATTRIBUTE_ConstantValue, name) == 0) {
+            return &member->attributes[i];
+        }
+    }
+
+    return NULL;
+}
 
 void printClassInfo(struct ClassFile *class_file) {
     printf("version: %d.%d\n", class_file->major_version, class_file->minor_version);

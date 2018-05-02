@@ -123,8 +123,18 @@ struct Field *newFields(struct Class *_class, struct ClassFile *class_file)
     //
     for (int i = 0; i < fields_count; ++i) {
         fields[i]._class = _class;
-//        fields[i].
-//        TODO
+        copyFieldInfo(&class_file->attributes[i], &fields[i], class_file->constant_pool);
+    }
+}
+
+void copyFieldInfo(struct MemberInfo *field_info, struct Field *field, struct ConstantPoolInfo *constant_pool)
+{
+    field->access_flags = field_info->access_flags;
+    memberName(field_info, constant_pool, field->name);
+    descriptor(field_info, constant_pool, field->descriptor);
+    struct AttributeInfo *attribute_info = constantValueAttribute(field_info, constant_pool);
+    if (attribute_info != NULL) {
+        field->const_value_index = attribute_info->info.constant_value.constant_value_index;
     }
 }
 

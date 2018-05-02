@@ -13,7 +13,7 @@ struct Field {
     char *name;
     char *descriptor;
     u4      slot_id;
-    u4 const_value_index;
+    u2 const_value_index;
     struct Class *_class;
 };
 

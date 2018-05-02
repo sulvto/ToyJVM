@@ -8,15 +8,11 @@
 
 // 通用格式
 struct Unparsed_attributeInfo {
-    u2 attribute_name_index;
-    u4 attribute_length;
     u1 *info;
 };
 
 struct ConstantValue_attributeInfo {
-    u2 attribute_name_index;
-    u4 attribute_length;
-    u2 constantValue_index;
+    u2 constant_value_index;
 };
 
 struct ExceptionTable {
@@ -27,8 +23,6 @@ struct ExceptionTable {
 };
 
 struct Code_attributeInfo {
-    u2 attribute_name_index;
-    u4 attribute_length;
     u2 max_stack;
     u2 max_locals;
     u4 code_length;
@@ -36,13 +30,19 @@ struct Code_attributeInfo {
     u2 exception_table_length;
     struct ExceptionTable *exceptionTable;
     u2 attributes_count;
-    union AttributeInfo *attributes;
+    struct AttributeInfo *attributes;
 };
 
-union AttributeInfo {
+union AttributeInfoUnion {
     struct Unparsed_attributeInfo       unparsed;
-    struct ConstantValue_attributeInfo  constantValue;
+    struct ConstantValue_attributeInfo  constant_value;
     struct Code_attributeInfo           code;
+};
+
+struct AttributeInfo {
+    u2 attribute_name_index;
+    u4 attribute_length;
+    union AttributeInfoUnion info;
 };
 
 struct CONSTANT_Class_info {
@@ -138,7 +138,7 @@ struct MemberInfo {
     u2              name_index;
     u2              descriptor_index;
     u2              attributes_count;
-    union AttributeInfo   *attributes;
+    struct AttributeInfo   *attributes;
 };
 
 struct ClassFile {
@@ -157,7 +157,7 @@ struct ClassFile {
     u2                      methods_count;
     struct MemberInfo       *methods;
     u2                      attributes_count;
-    union AttributeInfo    *attributes;
+    struct AttributeInfo    *attributes;
 };
 
 struct s_class_data {
@@ -173,8 +173,13 @@ struct ClassFile parseClassContent(struct s_class_data *class_data);
 
 void printClassInfo(struct ClassFile *);
 
-void methodName(const struct MemberInfo *, const struct ConstantPoolInfo *, char *);
+void memberName(const struct MemberInfo *, const struct ConstantPoolInfo *, char *);
+
+void descriptor(const struct MemberInfo *, const struct ConstantPoolInfo *, char *);
 
 void attributeName(const u2, const struct ConstantPoolInfo *, char *);
+
+struct AttributeInfo *constantValueAttribute(const struct MemberInfo *member, struct ConstantPoolInfo *constant_pool);
+
 
 #endif //TOYJVM_CLASSREADER_H

@@ -3,6 +3,7 @@
 //
 
 #include "class.h"
+#include "rtda.h"
 #include "classreader.h"
 #include "flags.h"
 
@@ -74,16 +75,57 @@ void allocAndInitStaticVars(struct Class *_class)
     }
 }
 
+void initStaticFinalVar(struct Class *_class, struct Field *field)
+{
+    struct Slots *slots = _class->static_vars;
+    struct ConstantPool *constantPool= _class->constant_pool;
+    u4 slot_id = field->slot_id;
+    if (field.const_value_index > 0) {
+        switch (field->descriptor) {
+            case "Z":
+            case "B":
+            case "C":
+            case "S":
+                break;
+            case "I":
+                int value = getConstent(field.const_value_index);
+                setInt(field.const_value_index, value, slots);
+                break;
+            case "J":
+                Long value = getConstent(field.const_value_index);
+                setLong(field.const_value_index, value, slots);
+                break;
+            case "F":
+                float value = getConstent(field.const_value_index);
+                setFloat(field.const_value_index, value, slots);
+                break;
+            case "D":
+                double value = getConstent(field.const_value_index);
+                setDouble(field.const_value_index, value, slots);
+            case "Ljava/lang/String":
+                // TODO
+                printf("Ljava/lang/String\n");
+                break;
+        }
+    }
+}
+
 void link(struct Class *_class)
 {
     verify(_class);
     prepare(_class);
 }
 
-struct Slots *newSlots(u4 size)
+struct Field *newFields(struct Class *_class, struct ClassFile *class_file)
 {
-    struct Slots *slots = (struct Slots *) malloc(sizeof(struct Slots) * size);
-    return slots;
+    u2 fields_count = class_file->fields_count;
+    struct Field *fields = (struct Field *) malloc(sizeof(struct Field) * fields_count);
+    //
+    for (int i = 0; i < fields_count; ++i) {
+        fields[i]._class = _class;
+//        fields[i].
+//        TODO
+    }
 }
 
 struct Class *newClass(struct ClassFile *class_file)

@@ -18,7 +18,7 @@ struct Slot {
     struct Object   *ref;
 };
 
-struct LocalVars {
+struct Slots {
     unsigned int size;
     unsigned int max;
     struct Slot *value;
@@ -31,7 +31,7 @@ struct OperandStack {
 
 struct Frame {
     struct Frame        *next;
-    struct LocalVars    *localVars;
+    struct Slots    *localVars;
     struct OperandStack *operand_stack;
     int                 nextPC;
     struct Thread       *thread;
@@ -47,6 +47,8 @@ struct Thread {
     int          pc;
     struct Stack *stack;
 };
+
+struct Slots *newSlots(const unsigned int max);
 
 struct Thread *newThread();
 
@@ -81,25 +83,25 @@ struct Object *popRef(struct OperandStack *);
 
 struct Slot popSlot(struct OperandStack *);
 
-void setInt(const unsigned int index, int value, struct LocalVars *localVars);
+void setInt(const unsigned int index, int value, struct Slots *localVars);
 
-void setLong(const unsigned int index, long value, struct LocalVars *localVars);
+void setLong(const unsigned int index, long value, struct Slots *localVars);
 
-void setFloat(const unsigned int index, float value, struct LocalVars *localVars);
+void setFloat(const unsigned int index, float value, struct Slots *localVars);
 
-void setDouble(const unsigned int index, double value, struct LocalVars *localVars);
+void setDouble(const unsigned int index, double value, struct Slots *localVars);
 
-void setRef(const unsigned int index, struct Object *value, const struct LocalVars *localVars);
+void setRef(const unsigned int index, struct Object *value, const struct Slots *localVars);
 
-int getInt(const unsigned int index, struct LocalVars *localVars);
+int getInt(const unsigned int index, struct Slots *localVars);
 
-long getLong(const unsigned int index, struct LocalVars *localVars);
+long getLong(const unsigned int index, struct Slots *localVars);
 
-float getFloat(const unsigned int index, struct LocalVars *localVars);
+float getFloat(const unsigned int index, struct Slots *localVars);
 
-double getDouble(const unsigned int index, struct LocalVars *localVars);
+double getDouble(const unsigned int index, struct Slots *localVars);
 
-struct Object *getRef(const unsigned int index, struct LocalVars *localVars);
+struct Object *getRef(const unsigned int index, struct Slots *localVars);
 
 
 #endif //TOYJVM_RTDA_H

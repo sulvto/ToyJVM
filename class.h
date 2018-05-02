@@ -13,6 +13,8 @@ struct Field {
     char *name;
     char *descriptor;
     u4      slot_id;
+    u4 const_value_index;
+    struct Class *_class;
 };
 
 struct Method {
@@ -29,11 +31,6 @@ struct ConstantPool {
     struct Class    *_class;
     u4              size;
     struct Constant *constant;
-};
-
-struct Slots {
-    u4 index;
-    struct Slot *slot;
 };
 
 struct Class {

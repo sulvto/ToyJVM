@@ -25,13 +25,13 @@ struct Thread *newThread()
     return thread;
 }
 
-struct LocalVars *newLocalVars(const unsigned int max)
+struct Slots *newSlots(const unsigned int max)
 {
-    struct LocalVars *localVars = (struct LocalVars *) malloc(sizeof(struct LocalVars));
-    localVars->size = 0;
-    localVars->max = max;
-    localVars->value = (struct Slot *) malloc(sizeof(struct Slot) * max);
-    return localVars;
+    struct Slots *slots = (struct Slots *) malloc(sizeof(struct Slots));
+    slots->size = 0;
+    slots->max = max;
+    slots->value = (struct Slot *) malloc(sizeof(struct Slot) * max);
+    return slots;
 }
 
 struct OperandStack *newOperandStack(const unsigned int max)
@@ -45,7 +45,7 @@ struct OperandStack *newOperandStack(const unsigned int max)
 struct Frame *newFrame(const unsigned int maxLocalVars, const unsigned int maxStack, struct Thread *thread)
 {
     struct Frame *frame = (struct Frame *) malloc(sizeof(struct Frame));
-    frame->localVars = newLocalVars(maxLocalVars);
+    frame->localVars = newSlots(maxLocalVars);
     frame->operand_stack = newOperandStack(maxStack);
     frame->thread = thread;
     return frame;
@@ -155,70 +155,70 @@ struct Slot popSlot(struct OperandStack *operandStack)
     return operandStack->slot[--operandStack->size];
 }
 
-void setInt(const unsigned int index, int value, struct LocalVars *localVars)
+void setInt(const unsigned int index, int value, struct Slots *slots)
 {
-    localVars->value[index].num = value;
+    slots->value[index].num = value;
 }
 
-void setLong(const unsigned int index, long value, struct LocalVars *localVars)
+void setLong(const unsigned int index, long value, struct Slots *slots)
 {
 //    int high = value >> 16;
 //    int low = value & 65535;
-    localVars->value[index].num = value >> 16;
-    localVars->value[index + 1].num = value & 65535L;
+    slots->value[index].num = value >> 16;
+    slots->value[index + 1].num = value & 65535L;
 }
 
-void setFloat(const unsigned int index, float value, struct LocalVars *localVars)
+void setFloat(const unsigned int index, float value, struct Slots *slots)
 {
-    float *f = &localVars->value[index].num;
+    float *f = &slots->value[index].num;
     *f = value;
 }
 
-void setDouble(const unsigned int index, double value, struct LocalVars *localVars)
+void setDouble(const unsigned int index, double value, struct Slots *slots)
 {
     // TODO
-//    localVars[index]->num = value;
-//    localVars[index + 1]->num = value >> 32;
+//    slots[index]->num = value;
+//    slots[index + 1]->num = value >> 32;
 }
 
-void setRef(const unsigned int index, struct Object *value, const struct LocalVars *localVars)
+void setRef(const unsigned int index, struct Object *value, const struct Slots *slots)
 {
-    localVars->value[index].ref = value;
+    slots->value[index].ref = value;
 }
 
-int getInt(const unsigned int index, struct LocalVars *localVars)
+int getInt(const unsigned int index, struct Slots *slots)
 {
-    return localVars->value[index].num;
+    return slots->value[index].num;
 }
 
-long getLong(const unsigned int index, struct LocalVars *localVars)
+long getLong(const unsigned int index, struct Slots *slots)
 {
-    long high = localVars->value[index].num;
-    int low = localVars->value[index + 1].num;
+    long high = slots->value[index].num;
+    int low = slots->value[index + 1].num;
     high = high << 16;
     return (high | low);
 }
 
-float getFloat(const unsigned int index, struct LocalVars *localVars)
+float getFloat(const unsigned int index, struct Slots *slots)
 {
-    float *f = &localVars->value[index].num;
+    float *f = &slots->value[index].num;
     return *f;
 }
 
-double getDouble(const unsigned int index, struct LocalVars *localVars)
+double getDouble(const unsigned int index, struct Slots *slots)
 {
-//    double result = localVars[index++]->num;
+//    double result = slots[index++]->num;
 //    result = result << 32;
-//    result &= localVars[index]->num;
+//    result &= slots[index]->num;
     return 0;
 }
 
-struct Object *getRef(const unsigned int index, struct LocalVars *localVars)
+struct Object *getRef(const unsigned int index, struct Slots *slots)
 {
-    return localVars->value[index].ref;
+    return slots->value[index].ref;
 }
 
-void testLocalVars(struct LocalVars *localVars) {
+void testLocalVars(struct Slots *localVars) {
     setInt(0, 100, localVars);
     setInt(1, -100, localVars);
     setLong(2, 2147483647, localVars);
@@ -260,7 +260,7 @@ void testOperandStack(struct OperandStack *operandStack)
 // int main()
 // {
 //     struct Frame *frame = newFrame(100, 100);
-//     struct LocalVars *localVars = frame->localVars;
+//     struct Slots *localVars = frame->localVars;
 //     struct OperandStack *operandStack = frame->operand_stack;
 //     printf("testLocalVars \n");
 //     testLocalVars(localVars);

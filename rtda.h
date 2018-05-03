@@ -9,8 +9,7 @@
 
 struct Object {
     struct Class *_class;
-    u4          field_count;
-    struct Slot *fields;
+    struct Slots *fields;
 };
 
 struct Slot {

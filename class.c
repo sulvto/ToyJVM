@@ -125,13 +125,14 @@ struct ConstantPool newConstantPool(struct Class *_class, struct  ClassFile *cla
     constant_pool.size = count;
     constant_pool.constants = (union Constant *) malloc(sizeof(union Constant) * count);
     for (int i = 0; i < count; ++i) {
-        struct ConstantPoolInfo constant_pool_info = class_file->constant_pool[i];
+        struct ConstantPoolInfo constant_pool_info = class_file->constant_pool_info[i];
             switch (constant_pool_info.tag) {
                 case CONSTANT_Class:
                     struct ClassRef class_ref;
                     class_ref.constant_pool = constant_pool;
                     class_ref._class = NULL;
                     className(class_file, class_file->constant_pool, class_ref.class_name);
+                    constant_pool.constants[i].class_ref = class_ref;
                     break;
                 case CONSTANT_Methodref:
                     struct MethodRef method_ref;
@@ -147,7 +148,7 @@ struct ConstantPool newConstantPool(struct Class *_class, struct  ClassFile *cla
                                              method_ref.descriptor);
 
                     className(class_file->this_class, class_file->constant_pool, &method_ref.class_name);
-                    // TODO ? method_ref
+                    constant_pool.constants[i].method_ref = method_ref;
                     break;
                 case CONSTANT_Fieldref:
                     struct FieldRef field_ref;
@@ -164,6 +165,7 @@ struct ConstantPool newConstantPool(struct Class *_class, struct  ClassFile *cla
 
                     className(class_file->this_class, class_file->constant_pool, &field_ref.class_name);
 
+                    constant_pool.constants[i].field_ref = field_ref;
                     break;
                 case CONSTANT_InterfaceMethodref_info:
                     // TODO
@@ -180,9 +182,12 @@ struct ConstantPool newConstantPool(struct Class *_class, struct  ClassFile *cla
                                                    interface_method_ref.descriptor);
 
                     className(class_file->this_class, class_file->constant_pool, &interface_method_ref.class_name);
+
+                    constant_pool.constants[i].interface_method_ref = interface_method_ref;
                     break;
                 default:
-                // TODO
+                    // TODO
+                    break;
             }
     }
 
@@ -270,14 +275,13 @@ struct Class *parseClass(struct s_class_data *class_data)
 }
 
 
-
-struct Class *resolvedField(struct FieldRef *field_ref)
+struct Field *resolvedField(struct FieldRef *field_ref)
 {
     if (field_ref->field == NULL) {
         resolveFieldRef(field_ref);
     }
 
-    return class_ref->_class;
+    return field_ref->field;
 }
 
 void resolveFieldRef(struct FieldRef *field_ref)
@@ -285,6 +289,78 @@ void resolveFieldRef(struct FieldRef *field_ref)
     struct Class *d = field_ref->constant_pool->_class;
     struct Class *c;
     resolvedClass(field_ref, c);
-    // TODO
+    field_ref->field = lookupField(c, field_ref->name, field_ref->descriptor);
 
+    if (field_ref->field == NULL) {
+        printf("java.lang.NoSuchFieldError");
+    }
+
+    if (!Field_isAccessibleTo(field_ref->field)) {
+        printf("java.lang.IllegalAccessError");
+    }
+}
+
+struct Field *lookupField(struct Class *_class, char *name, char *descriptor)
+{
+    for (int i = 0; i < _class->fields_count; ++i) {
+        if (strcmp(_class->fields[i].name, name) == strcmp(_class->fields[i].descriptor, descriptor) == 0) {
+            return _class->fields[i];
+        }
+    }
+
+    for (int j = 0; j < _class->interface_count; ++j) {
+        struct Field *field = lookupField(_class->interface_class[j], name, descriptor);
+        if (field != NULL) {
+            return field;
+        }
+    }
+
+    if (_class->super_class != NULL) {
+        return lookupField(_class->super_class, name, descriptor);
+    }
+
+    return NULL;
+}
+
+int Class_isAccessibleTo(struct Class *_this, struct Class *_other)
+{
+    return isPublic(_this) || strcmp(packageName(_this), packageName(_other)) == 0;
+}
+
+int Class_isInterface(struct Class *_this) {
+
+}
+
+int Class_isAbstract(struct Class *_this) {
+
+}
+
+int Object_isInterfaceOf(struct Object *_this, struct Class *_class)
+{
+//    _this->_class
+}
+
+int Field_isAccessibleTo(struct Field *_this, struct Class *_class)
+{
+    if (isPublic(_this)) {
+        return 1;
+    }
+
+    if (isProtected(_this)) {
+        return _this->_class == _class || isSubClassOf(_this->_class, _class) ||
+               strcmp(packageName(_this->_class), packageName(_other)) == 0;
+    }
+
+    if (!isPrivate()) {
+        return strcmp(packageName(_this->_class), packageName(_other)) == 0;
+    }
+
+    return _this->_class == _class;
+}
+
+struct Object *newObject(struct Class *_class)
+{
+    struct Object *object = (struct Object *) malloc(sizeof(struct Object));
+    object->_class = _class;
+    object->fields = newSlots(_class->interface_slot_count);
 }

@@ -162,7 +162,7 @@ struct ClassFile {
     u2                      minor_version;
     u2                      major_version;
     u2                      constant_pool_count;
-    struct ConstantPoolInfo *constant_pool;
+    struct ConstantPoolInfo *constant_pool_info;
     u2                      access_flags;
     u2                      this_class;
     u2                      super_class;
@@ -195,14 +195,14 @@ void descriptor(const struct MemberInfo *, const struct ConstantPoolInfo *, char
 
 void attributeName(const u2, const struct ConstantPoolInfo *, char *);
 
-void className(const u2 name_index, const struct ConstantPoolInfo *constant_pool, char *name);
+void className(const u2 name_index, const struct ConstantPoolInfo *constant_pool_info, char *name);
 
-void ConstantPoolInfo_getUtf8String(const struct ConstantPoolInfo *constant_pool, const u2 index, char *name);
+void ConstantPoolInfo_getUtf8String(const struct ConstantPoolInfo *constant_pool_info, const u2 index, char *name);
 
-struct CONSTANT_NameAndType_info ConstantPoolInfo_getNameAndType(const struct ConstantPoolInfo *constant_pool,
+struct CONSTANT_NameAndType_info ConstantPoolInfo_getNameAndType(const struct ConstantPoolInfo *constant_pool_info,
                                                                  const u2 index);
 
-struct AttributeInfo *constantValueAttribute(const struct MemberInfo *member, struct ConstantPoolInfo *constant_pool);
+struct AttributeInfo *constantValueAttribute(const struct MemberInfo *member, struct ConstantPoolInfo *constant_pool_info);
 
 
 #endif //TOYJVM_CLASSREADER_H

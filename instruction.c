@@ -1132,22 +1132,229 @@ void return_exe(union Context *context, struct Frame *frame)
 
 void getstatic_exe(union Context *context, struct Frame *frame)
 {
+    struct Method *current_method = frame->method;
+    struct Class *current_class = current_method->_class;
+    union Constant *constant = _class->constant_pool[context->index];
+    struct Field *field = resolvedField(constant->field_ref);
+    struct Class *_class = field->_class;
 
+    // TODO
+
+    if (!Field_isStatic(field)) {
+        printf("java.lang.IncompatibleClassChangeError");
+    }
+
+    if (Field_isFinal(field)) {
+        if (current_class != _class || strcmp(current_method->name, "<clinit>") == 1) {
+            printf("java.lang.IllegalAccessError");
+        }
+    }
+
+    u4 slot_id = field->slot_id;
+    struct OperandStack *stack = frame->operand_stack;
+    struct Slots *slots = _class->static_vars;
+
+    switch (field->descriptor[0]) {
+        case 'Z':
+        case 'B':
+        case 'C':
+        case 'S':
+        case 'I':
+            pushInt(getInt(slot_id, slots), stack);
+            break;
+        case 'F':
+            pushFloat(getFloat(slot_id, slots), stack);
+            break;
+        case 'J':
+            pushLong(getLong(slot_id, slots), stack);
+            break;
+        case 'D':
+            pushDouble(getDouble(slot_id, slots), stack);
+            break;
+        case 'L':
+        case '[':
+            pushRef(getRef(slot_id, slots), stack);
+            break;
+        default:
+            break;
+    }
 }
 
 void putstatic_exe(union Context *context, struct Frame *frame)
 {
+    union Constant *constant = frame->method->_class->constant_pool[context->index];
+    struct Field *field = resolvedField(constant->field_ref);
+    struct Class *_class = field->_class;
 
+    // TODO
+
+    if (!Field_isStatic(field)) {
+        printf("java.lang.IncompatibleClassChangeError");
+    }
+
+    if (Field_isFinal(field)) {
+        if (current_class != _class || strcmp(current_method->name, "<clinit>") == 1) {
+            printf("java.lang.IllegalAccessError");
+        }
+    }
+
+    u4 slot_id = field->slot_id;
+    struct OperandStack *stack = frame->operand_stack;
+    struct Slots *slots = _class->static_vars;
+
+    switch (field->descriptor[0]) {
+        case 'Z':
+        case 'B':
+        case 'C':
+        case 'S':
+        case 'I':
+            setInt(slot_id, popInt(stack), slots);
+            break;
+        case 'F':
+            setFloat(slot_id, popFloat(stack), slots);
+            break;
+        case 'J':
+            setLong(slot_id, popLong(stack), slots);
+            break;
+        case 'D':
+            setDouble(slot_id, popDouble(stack), slots);
+            break;
+        case 'L':
+        case '[':
+            setRef(slot_id, popRef(stack), slots);
+            break;
+        default:
+            break;
+    }
 }
 
 void getfield_exe(union Context *context, struct Frame *frame)
 {
+    union Constant *constant = frame->method->_class->constant_pool[context->index];
+    struct Field *field = resolvedField(constant->field_ref);
+    struct Class *_class = field->_class;
 
+    // TODO
+
+    if (Field_isStatic(field)) {
+        printf("java.lang.IncompatibleClassChangeError");
+    }
+
+    if (Field_isFinal(field)) {
+        if (current_class != _class || strcmp(current_method->name, "<init>") == 1) {
+            printf("java.lang.IllegalAccessError");
+        }
+    }
+
+    u4 slot_id = field->slot_id;
+    struct OperandStack *stack = frame->operand_stack;
+    struct Object *ref = popRef(stack);
+    if (ref == NULL) {
+        printf("java.lang.NullPointerException");
+    }
+    struct Slots *slots = ref->fields;
+
+    switch (field->descriptor[0]) {
+        case 'Z':
+        case 'B':
+        case 'C':
+        case 'S':
+        case 'I':
+            pushInt(getInt(slot_id, slots), stack);
+            break;
+        case 'F':
+            pushFloat(getFloat(slot_id, slots), stack);
+            break;
+        case 'J':
+            pushLong(getLong(slot_id, slots), stack);
+            break;
+        case 'D':
+            pushDouble(getDouble(slot_id, slots), stack);
+            break;
+        case 'L':
+        case '[':
+            pushRef(getRef(slot_id, slots), stack);
+            break;
+        default:
+            break;
+    }
 }
 
 void putfield_exe(union Context *context, struct Frame *frame)
 {
+    union Constant *constant = frame->method->_class->constant_pool[context->index];
+    struct Field *field = resolvedField(constant->field_ref);
+    struct Class *_class = field->_class;
 
+    // TODO
+
+    if (Field_isStatic(field)) {
+        printf("java.lang.IncompatibleClassChangeError");
+    }
+
+    if (Field_isFinal(field)) {
+        if (current_class != _class || strcmp(current_method->name, "<init>") == 1) {
+            printf("java.lang.IllegalAccessError");
+        }
+    }
+
+    u4 slot_id = field->slot_id;
+    struct OperandStack *stack = frame->operand_stack;
+
+    switch (field->descriptor[0]) {
+        case 'Z':
+        case 'B':
+        case 'C':
+        case 'S':
+        case 'I':
+            int val = popInt(stack);
+            struct Object *ref = popRef(stack);
+            if (ref == NULL) {
+                printf("java.lang.NullPointerException");
+            }
+
+            setInt(slot_id, val, ref->fields);
+            break;
+        case 'F':
+            float val = popFloat(stack);
+            struct Object *ref = popRef(stack);
+            if (ref == NULL) {
+                printf("java.lang.NullPointerException");
+            }
+
+            setFloat(slot_id, val, ref->fields);
+            break;
+        case 'J':
+            long val = popLong(stack);
+            struct Object *ref = popRef(stack);
+            if (ref == NULL) {
+                printf("java.lang.NullPointerException");
+            }
+
+            setLong(slot_id, val, ref->fields);
+            break;
+        case 'D':
+            double val = popDouble(stack);
+            struct Object *ref = popRef(stack);
+            if (ref == NULL) {
+                printf("java.lang.NullPointerException");
+            }
+
+            setDouble(slot_id, val, ref->fields);
+            break;
+        case 'L':
+        case '[':
+            struct Object *val = popRef(stack);
+            struct Object *ref = popRef(stack);
+            if (ref == NULL) {
+                printf("java.lang.NullPointerException");
+            }
+
+            setRef(slot_id, val, ref->fields);
+            break;
+        default:
+            break;
+    }
 }
 
 void invokevirtual_exe(union Context *context, struct Frame *frame)
@@ -1178,7 +1385,17 @@ void invokedynamic_exe(union Context *context, struct Frame *frame)
 void new_exe(union Context *context, struct Frame *frame)
 {
     struct ConstantPool *constantPool = frame->method->_class->constant_pool[context->index];
-    constantPool->constants
+    union Constant *constant = constantPool->constants[context->index];
+    struct Class *_class;
+    resolvedClass(constant->class_ref, _class);
+
+    if (Class_isInterface(_class) || Class_isAbstract(_class)) {
+        printf("java.lang.InstantiationError");
+    }
+
+    struct Object *ref = newObject(_class);
+
+    pushRef(ref, frame->operand_stack);
 }
 
 void newarray_exe(union Context *context, struct Frame *frame)
@@ -1208,7 +1425,22 @@ void checkcast_exe(union Context *context, struct Frame *frame)
 
 void instanceof_exe(union Context *context, struct Frame *frame)
 {
+    struct OperandStack *stack = frame->operand_stack;
+    struct Object *ref = popRef(stack);
+    if (ref == NULL) {
+        pushInt(0, stack);
+        return;
+    }
 
+    union Constant *constant = frame->method->_class->constant_pool[context->index];
+
+    resolveClassRef(constant->class_ref);
+
+    if (Field_isInterfaceOf(ref, constant->class_ref._class)) {
+        pushInt(1, stack);
+    } else {
+        pushInt(0, stack);
+    }
 }
 
 void monitorenter_exe(union Context *context, struct Frame *frame)
@@ -1624,13 +1856,13 @@ struct Instruction newInstruction(u1 opcode)
     } else if (RETURN == opcode) {
         return makeInstruction(nop_fetchOp, return_exe);
     } else if (GETSTATIC == opcode) {
-        return makeInstruction(nop_fetchOp, getstatic_exe);
+        return makeInstruction(index16_fetchOp, getstatic_exe);
     } else if (PUTSTATIC == opcode) {
-        return makeInstruction(nop_fetchOp, putstatic_exe);
+        return makeInstruction(index16_fetchOp, putstatic_exe);
     } else if (GETFIELD == opcode) {
-        return makeInstruction(nop_fetchOp, getfield_exe);
+        return makeInstruction(index16_fetchOp, getfield_exe);
     } else if (PUTFIELD == opcode) {
-        return makeInstruction(nop_fetchOp, putfield_exe);
+        return makeInstruction(index16_fetchOp, putfield_exe);
     } else if (INVOKEVIRTUAL == opcode) {
         return makeInstruction(nop_fetchOp, invokevirtual_exe);
     } else if (INVOKESPECIAL == opcode) {
@@ -1654,7 +1886,7 @@ struct Instruction newInstruction(u1 opcode)
     } else if (CHECKCAST == opcode) {
         return makeInstruction(nop_fetchOp, checkcast_exe);
     } else if (INSTANCEOF == opcode) {
-        return makeInstruction(nop_fetchOp, instanceof_exe);
+        return makeInstruction(index16_fetchOp, instanceof_exe);
     } else if (MONITORENTER == opcode) {
         return makeInstruction(nop_fetchOp, monitorenter_exe);
     } else if (MONITOREXIT == opcode) {

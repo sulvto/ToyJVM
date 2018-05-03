@@ -18,6 +18,13 @@ struct Field {
     struct Class *_class;
 };
 
+union Constant {
+    struct MethodRef method_ref;
+    struct ClassRef class_ref;
+    struct FieldRef field_ref;
+    struct InterfaceMethodRef interface_method_ref;
+};
+
 struct Method {
     u2      access_flags;
     char    *name;
@@ -94,6 +101,17 @@ struct InterfaceMethodRef {
     char                *name;
     char                *descriptor;
 };
+
+struct Object *newObject(struct Class *_class);
+
+int Object_isInterfaceOf(struct Object *_this, struct Class *_class);
+
+int Class_isInterface(struct Class *_this);
+
+int Class_isAbstract(struct Class *_this);
+
+struct Field *resolvedField(struct FieldRef *field_ref);
+
 
 
 #define resolvedClass(ref, result) \

@@ -83,25 +83,29 @@ struct Object *popRef(struct OperandStack *);
 
 struct Slot popSlot(struct OperandStack *);
 
-void setInt(const unsigned int index, int value, struct Slots *localVars);
+void setInt(const unsigned int index, int value, struct Slots *slots);
 
-void setLong(const unsigned int index, long value, struct Slots *localVars);
+void setLong(const unsigned int index, long value, struct Slots *slots);
 
-void setFloat(const unsigned int index, float value, struct Slots *localVars);
+void setFloat(const unsigned int index, float value, struct Slots *slots);
 
-void setDouble(const unsigned int index, double value, struct Slots *localVars);
+void setDouble(const unsigned int index, double value, struct Slots *slots);
 
-void setRef(const unsigned int index, struct Object *value, const struct Slots *localVars);
+void setRef(const unsigned int index, struct Object *value, const struct Slots *slots);
 
-int getInt(const unsigned int index, struct Slots *localVars);
+void setSlot(const unsigned int index, struct Slot *value, const struct Slots *slots);
 
-long getLong(const unsigned int index, struct Slots *localVars);
+int getInt(const unsigned int index, struct Slots *slots);
 
-float getFloat(const unsigned int index, struct Slots *localVars);
+long getLong(const unsigned int index, struct Slots *slots);
 
-double getDouble(const unsigned int index, struct Slots *localVars);
+float getFloat(const unsigned int index, struct Slots *slots);
 
-struct Object *getRef(const unsigned int index, struct Slots *localVars);
+double getDouble(const unsigned int index, struct Slots *slots);
+
+struct Object *getRef(const unsigned int index, struct Slots *slots);
+
+struct Slot getSlot(const unsigned int index, const struct Slots *slots);
 
 
 #endif //TOYJVM_RTDA_H

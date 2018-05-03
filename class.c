@@ -275,6 +275,124 @@ struct Class *parseClass(struct s_class_data *class_data)
 }
 
 
+struct Method *resolvedInterfaceMethod(struct InterfaceMethodRef *interface_method_ref)
+{
+    if (interface_method_ref->method == NULL) {
+        resolveInterfaceMethodRef(interface_method_ref);
+    }
+
+    return interface_method_ref->method;
+}
+
+void resolveInterfaceMethodRef(struct InterfaceMethodRef *interface_method_ref)
+{
+    struct Class *d = interface_method_ref->constant_pool->_class;
+    struct Class *c;
+    resolvedClass(interface_method_ref, c);
+
+    if (!Class_isInterface(c)) {
+        printf("java.lang.IncompatibleClassChangeError");
+    }
+
+    struct Method *method = lookupInterfaceMethod(c, interface_method_ref->name, interface_method_ref->descriptor);
+
+    if (method == NULL) {
+        printf("java.lang.NoSuchMethodError");
+    }
+
+    if (!Method_isAccessibleTo(method)) {
+        printf("java.lang.IllegalAccessError");
+    }
+
+    interface_method_ref->method = method;
+}
+
+struct Method *lookupInterfaceMethod(struct Class *_class, char *name, char *descriptor)
+{
+    for (int i = 0; i < _class->methods_count; ++i) {
+        if (strcmp(_class->methods[i].name, name) == 0 && strcmp(_class->methods[i].descriptor, descriptor) == 0) {
+            return _class->methods[i];
+        }
+    }
+
+    return lookupMethodInInterfaces(_class->interface_class, _class->interface_count, name, descriptor);
+}
+
+struct Method *resolvedMethod(struct MethodRef *method_ref)
+{
+    if (method_ref->method == NULL) {
+        resolveMethodRef(method_ref);
+    }
+
+    return method_ref->method;
+}
+
+void resolveMethodRef(struct MethodRef *method_ref)
+{
+    struct Class *d = method_ref->constant_pool->_class;
+    struct Class *c;
+    resolvedClass(method_ref, c);
+
+    if (Class_isInterface(c)) {
+        printf("java.lang.IncompatibleClassChangeError");
+    }
+
+    struct Method *method = lookupMethod(c, method_ref->name, method_ref->descriptor);
+
+    if (method == NULL) {
+        printf("java.lang.NoSuchMethodError");
+    }
+
+    if (!Method_isAccessibleTo(method)) {
+        printf("java.lang.IllegalAccessError");
+    }
+
+    method_ref->method = method;
+}
+
+struct Method *lookupMethod(struct Class *_class, char *name, char *descriptor)
+{
+    struct Method *method = lookupMethodInClass(_class, name, descriptor);
+    if (method == NULL) {
+        method = lookupMethodInInterfaces(_class->interface_count)
+    }
+
+    return method;
+}
+
+struct Method *lookupMethodInClass(struct Class *_class, char *name, char *descriptor)
+{
+    for (int i = 0; i < _class->methods_count; ++i) {
+        if (strcmp(_class->methods[i].name, name) == 0 && strcmp(_class->methods[i].descriptor, descriptor) == 0) {
+            return _class->methods[i];
+        }
+    }
+
+    return NULL;
+}
+struct Method *lookupMethodInInterfaces(struct Class **interfaces, u2 count , char *name, char *descriptor)
+{
+    struct Method *method;
+
+    for (int i = 0; i < count; ++i) {
+        for (int j = 0; j < interfaces[i]->methods_count; ++j) {
+            method = interfaces[i]->methods[j];
+            if (strcmp(method->name, name) == 0 && strcmp(method->descriptor, descriptor) == 0) {
+                return method;
+            }
+        }
+
+        method = lookupMethodInInterfaces(interfaces[i]->interface_class, interfaces[i]->interface_count, name,
+                                          descriptor);
+        if (method != NULL) {
+            return method;
+        }
+    }
+
+    return NULL;
+}
+
+
 struct Field *resolvedField(struct FieldRef *field_ref)
 {
     if (field_ref->field == NULL) {
@@ -289,15 +407,17 @@ void resolveFieldRef(struct FieldRef *field_ref)
     struct Class *d = field_ref->constant_pool->_class;
     struct Class *c;
     resolvedClass(field_ref, c);
-    field_ref->field = lookupField(c, field_ref->name, field_ref->descriptor);
+    struct Field *field = lookupField(c, field_ref->name, field_ref->descriptor);
 
-    if (field_ref->field == NULL) {
+    if (field == NULL) {
         printf("java.lang.NoSuchFieldError");
     }
 
-    if (!Field_isAccessibleTo(field_ref->field)) {
+    if (!Field_isAccessibleTo(field)) {
         printf("java.lang.IllegalAccessError");
     }
+
+    field_ref->field = field;
 }
 
 struct Field *lookupField(struct Class *_class, char *name, char *descriptor)

@@ -34,6 +34,7 @@ struct Method {
     u4      code_length;
     u1      *code;
     struct Class *_class;
+    u4      arg_count;
 };
 
 struct ConstantPool {

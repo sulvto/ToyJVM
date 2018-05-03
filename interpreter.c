@@ -9,6 +9,20 @@
 #include "interpreter.h"
 #include "instruction.h"
 
+void invokeMethod(struct Frame *invokerFrame, struct Method *method)
+{
+    struct Thread *thread = invokerFrame->thread;
+    struct Frame *newFrame = newFrame(thread, method);
+    pushFrame(newFrame, thread);
+    if (method->arg_count > 0) {
+        for (int i = method->arg_count - 1; i >= 0; --i) {
+            struct Slot *slot = popSlot(invokerFrame->operand_stack);
+            setSlot(i, *slot, newFrame->localVars);
+        }
+    }
+}
+
+
 
 void loop(struct Thread *thread, u1 *bytecode)
 {

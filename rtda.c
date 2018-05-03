@@ -187,6 +187,11 @@ void setRef(const unsigned int index, struct Object *value, const struct Slots *
     slots->value[index].ref = value;
 }
 
+void setSlot(const unsigned int index, struct Slot *value, const struct Slots *slots)
+{
+    slots->value[index] = value;
+}
+
 int getInt(const unsigned int index, struct Slots *slots)
 {
     return slots->value[index].num;
@@ -217,6 +222,11 @@ double getDouble(const unsigned int index, struct Slots *slots)
 struct Object *getRef(const unsigned int index, struct Slots *slots)
 {
     return slots->value[index].ref;
+}
+
+struct Slot getSlot(const unsigned int index, const struct Slots *slots)
+{
+    return slots->value[index];
 }
 
 void testLocalVars(struct Slots *localVars) {

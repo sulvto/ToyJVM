@@ -39,15 +39,13 @@ void loop(struct Thread *thread, u1 *bytecode)
     }
 }
 
-void interpret(struct MemberInfo *mainMethod)
+void interpret(struct Method *main_method)
 {
-    struct Code_attributeInfo code_attribute = mainMethod->attributes->code;
-    u2 max_locals = code_attribute.max_locals;
-    u2 max_stack = code_attribute.max_stack;
+    struct Code_attributeInfo code_attribute = main_method->attributes->code;
     const u4 code_length = code_attribute.code_length;
 
     struct Thread *thread = newThread();
-    struct Frame *frame = newFrame(max_locals, max_stack, thread);
+    struct Frame *frame = newFrame(thread, main_method);
     pushFrame(frame, thread);
 
     loop(thread, code_attribute.code);

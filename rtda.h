@@ -35,6 +35,7 @@ struct Frame {
     struct OperandStack *operand_stack;
     int                 nextPC;
     struct Thread       *thread;
+    struct Method       *method;
 };
 
 struct Stack {
@@ -52,7 +53,7 @@ struct Slots *newSlots(const unsigned int max);
 
 struct Thread *newThread();
 
-struct Frame *newFrame(const unsigned int maxLocalVars, const unsigned int maxStack, struct Thread *thread);
+struct Frame *newFrame(const struct Thread *thread, const struct Method *method);
 
 void pushFrame(struct Frame *frame, struct Thread *thread);
 

@@ -42,12 +42,13 @@ struct OperandStack *newOperandStack(const unsigned int max)
     return operand_stack;
 }
 
-struct Frame *newFrame(const unsigned int maxLocalVars, const unsigned int maxStack, struct Thread *thread)
+struct Frame *newFrame(const struct Thread *thread, const struct Method *method)
 {
     struct Frame *frame = (struct Frame *) malloc(sizeof(struct Frame));
-    frame->localVars = newSlots(maxLocalVars);
-    frame->operand_stack = newOperandStack(maxStack);
+    frame->localVars = newSlots(method->max_locals);
+    frame->operand_stack = newOperandStack(method->max_stack);
     frame->thread = thread;
+    frame->method = method;
     return frame;
 }
 

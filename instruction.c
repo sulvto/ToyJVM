@@ -1177,7 +1177,8 @@ void invokedynamic_exe(union Context *context, struct Frame *frame)
 
 void new_exe(union Context *context, struct Frame *frame)
 {
-
+    struct ConstantPool *constantPool = frame->method->_class->constant_pool[context->index];
+    constantPool->constants
 }
 
 void newarray_exe(union Context *context, struct Frame *frame)
@@ -1641,7 +1642,7 @@ struct Instruction newInstruction(u1 opcode)
     } else if (INVOKEDYNAMIC == opcode) {
         return makeInstruction(nop_fetchOp, invokedynamic_exe);
     } else if (NEW == opcode) {
-        return makeInstruction(nop_fetchOp, new_exe);
+        return makeInstruction(index16_fetchOp, new_exe);
     } else if (NEWARRAY == opcode) {
         return makeInstruction(nop_fetchOp, newarray_exe);
     } else if (ANEWARRAY == opcode) {

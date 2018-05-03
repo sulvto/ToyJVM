@@ -9,6 +9,6 @@
 #include "rtda.h"
 #include "bytecode.h"
 
-void interpret(struct MemberInfo *mainMethod);
+void interpret(struct Method *main);
 
 #endif //TOYJVM_INTERPRETER_H

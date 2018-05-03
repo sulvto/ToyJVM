@@ -5,23 +5,6 @@
 #include "type.h"
 #include "classreader.h"
 
-
-// ConstantPool tag
-const u1 CONSTANT_Class = 7;
-const u1 CONSTANT_Fieldref = 9;
-const u1 CONSTANT_Methodref = 10;
-const u1 CONSTANT_InterfaceMethodref = 11;
-const u1 CONSTANT_String = 8;
-const u1 CONSTANT_Integer = 3;
-const u1 CONSTANT_Float = 4;
-const u1 CONSTANT_Long = 5;
-const u1 CONSTANT_Double = 6;
-const u1 CONSTANT_NameAndType = 12;
-const u1 CONSTANT_Utf8 = 1;
-const u1 CONSTANT_MethodHandle = 15;
-const u1 CONSTANT_MethodType = 16;
-const u1 CONSTANT_InvokeDynamic = 18;
-
 // Attribute
 const char *ATTRIBUTE_ConstantValue = "ConstantValue";
 const char *ATTRIBUTE_Code = "Code";
@@ -361,23 +344,36 @@ struct CONSTANT_Utf8_info *utf8Info(const u2 index, const struct ConstantPoolInf
     return &constant_pool[index - 1].info.utf8_info;
 }
 
+void className(const u2 name_index, const struct ConstantPoolInfo *constant_pool, char *name)
+{
+    ConstantPoolInfo_getUtf8String(constant_pool, name_index, name);
+}
 
 void memberName(const struct MemberInfo *member, const struct ConstantPoolInfo *constant_pool, char *name)
 {
-    struct CONSTANT_Utf8_info *utf8_info = utf8Info(member->name_index, constant_pool);
-    utf8String(utf8_info, name);
+    ConstantPoolInfo_getUtf8String(constant_pool, member->name_index, name);
 }
 
 void descriptor(const struct MemberInfo *member, const struct ConstantPoolInfo *constant_pool, char *desc)
 {
-    struct CONSTANT_Utf8_info *utf8_info = utf8Info(member->descriptor_index, constant_pool);
-    utf8String(utf8_info, desc);
+    ConstantPoolInfo_getUtf8String(constant_pool, member->descriptor_index, name);
 }
 
 void attributeName(const u2 attribute_name_index, const struct ConstantPoolInfo *constant_pool, char *name)
 {
-    struct CONSTANT_Utf8_info *utf8_info = utf8Info(attribute_name_index, constant_pool);
+    ConstantPoolInfo_getUtf8String(constant_pool, attribute_name_index, name);
+}
+
+void ConstantPoolInfo_getUtf8String(const struct ConstantPoolInfo *constant_pool, const u2 index, char *name)
+{
+    struct CONSTANT_Utf8_info *utf8_info = utf8Info(index, constant_pool);
     utf8String(utf8_info, name);
+}
+
+
+struct CONSTANT_NameAndType_info ConstantPoolInfo_getNameAndType(const struct ConstantPoolInfo *constant_pool, const u2 index)
+{
+    return constant_pool[index - 1].info.nameAndType_info;
 }
 
 struct AttributeInfo *constantValueAttribute(const struct MemberInfo *member, struct ConstantPoolInfo *constant_pool)

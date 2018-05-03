@@ -9,7 +9,7 @@
 
 void verify(struct Class *_class)
 {
-    // TODO
+    prepare(_class);
 }
 
 void prepare(struct Class *_class)
@@ -116,6 +116,78 @@ void link(struct Class *_class)
     prepare(_class);
 }
 
+struct ConstantPool newConstantPool(struct Class *_class, struct  ClassFile *class_file)
+{
+    u2 count = class_file->constant_pool_count;
+
+    struct ConstantPool *constant_pool = (struct ConstantPool *) malloc(sizeof(struct ConstantPool));;
+    constant_pool._class = _class;
+    constant_pool.size = count;
+    constant_pool.constants = (union Constant *) malloc(sizeof(union Constant) * count);
+    for (int i = 0; i < count; ++i) {
+        struct ConstantPoolInfo constant_pool_info = class_file->constant_pool[i];
+            switch (constant_pool_info.tag) {
+                case CONSTANT_Class:
+                    struct ClassRef class_ref;
+                    class_ref.constant_pool = constant_pool;
+                    class_ref._class = NULL;
+                    className(class_file, class_file->constant_pool, class_ref.class_name);
+                    break;
+                case CONSTANT_Methodref:
+                    struct MethodRef method_ref;
+                    method_ref._class = NULL;
+                    method_ref.method = NULL;
+                    method_ref.constant_pool = constant_pool;
+                    // name and type
+                    struct CONSTANT_NameAndType_info nameAndType_info = ConstantPoolInfo_getNameAndType(class_file->constant_pool,
+                                                    constant_pool_info.info.methodref_info.name_and_type_index);
+                    ConstantPoolInfo_getUtf8String(class_file->constant_pool, nameAndType_info.name_index,
+                                             method_ref.name);
+                    ConstantPoolInfo_getUtf8String(class_file->constant_pool, nameAndType_info.descriptor_index,
+                                             method_ref.descriptor);
+
+                    className(class_file->this_class, class_file->constant_pool, &method_ref.class_name);
+                    // TODO ? method_ref
+                    break;
+                case CONSTANT_Fieldref:
+                    struct FieldRef field_ref;
+                    field_ref._class = NULL;
+                    field_ref.field = NULL;
+                    field_ref.constant_pool = constant_pool;
+                    // name and type
+                    struct CONSTANT_NameAndType_info nameAndType_info = ConstantPoolInfo_getNameAndType(class_file->constant_pool,
+                                                                                                        constant_pool_info.info.fieldref_info.name_and_type_index);
+                    ConstantPoolInfo_getUtf8String(class_file->constant_pool, nameAndType_info.name_index,
+                                                   field_ref.name);
+                    ConstantPoolInfo_getUtf8String(class_file->constant_pool, nameAndType_info.descriptor_index,
+                                                   field_ref.descriptor);
+
+                    className(class_file->this_class, class_file->constant_pool, &field_ref.class_name);
+
+                    break;
+                case CONSTANT_InterfaceMethodref_info:
+                    // TODO
+                    struct InterfaceMethodRef interface_method_ref;
+                    interface_method_ref._class = NULL;
+                    interface_method_ref.method = NULL;
+                    interface_method_ref.constant_pool = constant_pool;
+                    // name and type
+                    struct CONSTANT_NameAndType_info nameAndType_info = ConstantPoolInfo_getNameAndType(class_file->constant_pool,
+                                                                                                        constant_pool_info.info.interfaceMethodref_info.name_and_type_index);
+                    ConstantPoolInfo_getUtf8String(class_file->constant_pool, nameAndType_info.name_index,
+                                                   interface_method_ref.name);
+                    ConstantPoolInfo_getUtf8String(class_file->constant_pool, nameAndType_info.descriptor_index,
+                                                   interface_method_ref.descriptor);
+
+                    className(class_file->this_class, class_file->constant_pool, &interface_method_ref.class_name);
+                    break;
+                default:
+                // TODO
+            }
+    }
+
+}
+
 struct Field *newFields(struct Class *_class, struct ClassFile *class_file)
 {
     u2 fields_count = class_file->fields_count;
@@ -138,15 +210,22 @@ void copyFieldInfo(struct MemberInfo *field_info, struct Field *field, struct Co
     }
 }
 
-struct Class *newClass(struct ClassFile *class_file)
+struct Class newClass(struct ClassFile *class_file)
 {
-    struct Class *_class = (struct Class *) malloc(sizeof(static Class));
+    struct Class _class;
 
     _class->access_flags = class_file->access_flags;
-//    _class->name =
+
+    className(class_file->this_class, class_file->constant_pool, &_class->name);
+    className(class_file->super_class, class_file->constant_pool, &_class.super_class_name);
+    // interfaces_count
+    _class.constant_pool_count = class_file->constant_pool_count;
+    _class.constant_pool = newConstantPool(_class, class_file);
+    _class.fields = newFields(_class, class_file);
+    _class.methods = newFields(_class, class_file);
 }
 
-struct Class *loadClass(const char *name)
+struct Class *loadClass(const struct ClassLoader *loader, const char *name)
 {
     // map find
     return loadNonArrayClass(name);
@@ -188,4 +267,24 @@ struct Class *parseClass(struct s_class_data *class_data)
 {
     struct ClassFile class_file = parseClassContent(class_data);
     return newClass(&class_file);
+}
+
+
+
+struct Class *resolvedField(struct FieldRef *field_ref)
+{
+    if (field_ref->field == NULL) {
+        resolveFieldRef(field_ref);
+    }
+
+    return class_ref->_class;
+}
+
+void resolveFieldRef(struct FieldRef *field_ref)
+{
+    struct Class *d = field_ref->constant_pool->_class;
+    struct Class *c;
+    resolvedClass(field_ref, c);
+    // TODO
+
 }

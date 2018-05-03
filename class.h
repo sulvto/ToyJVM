@@ -7,13 +7,14 @@
 
 #include "type.h"
 #include "rtda.h"
+#include "classreader.h"
 
 struct Field {
-    u2 access_flags;
-    char *name;
-    char *descriptor;
+    u2      access_flags;
+    char    *name;
+    char    *descriptor;
     u4      slot_id;
-    u2 const_value_index;
+    u2      const_value_index;
     struct Class *_class;
 };
 
@@ -25,12 +26,13 @@ struct Method {
     u4      max_locals;
     u4      code_length;
     u1      *code;
+    struct Class *_class;
 };
 
 struct ConstantPool {
     struct Class    *_class;
-    u4              size;
-    struct Constant *constant;
+    u2              size;
+    union Constant *constants;
 };
 
 struct Class {
@@ -56,5 +58,58 @@ struct Class {
 struct ClassLoader {
     // map
 };
+
+struct Class *loadClass(const char *name);
+
+
+struct ClassRef {
+    struct ConstantPool *constant_pool;
+    struct Class        *_class;
+    char                *class_name;
+};
+
+struct MethodRef {
+    struct ConstantPool *constant_pool;
+    struct Class        *_class;
+    char                *class_name;
+    struct Method       *method;
+    char                *name;
+    char                *descriptor;
+};
+
+struct FieldRef {
+    struct ConstantPool *constant_pool;
+    struct Class        *_class;
+    char                *class_name;
+    struct Field        *field;
+    char                *name;
+    char                *descriptor;
+};
+
+struct InterfaceMethodRef {
+    struct ConstantPool *constant_pool;
+    struct Class        *_class;
+    char                *class_name;
+    struct Method       *method;
+    char                *name;
+    char                *descriptor;
+};
+
+
+#define resolvedClass(ref, result) \
+    if (ref->_class == NULL) {    \
+        resolveClassRef(ref); \
+    }   \
+
+    result = ref->_class;   \
+
+#define resolveClassRef(ref) \
+    struct Class *d = ref->constant_pool->_class; \
+    struct Class *c = loadClass(d->loader, ref->class_name); \
+    if (isAccessible(c, d) == 0) { \
+        printf("java.lang.IllegalAccessError"); \
+    } \
+    ref->_class = c; \
+
 
 #endif //TOYJVM_CLASS_H

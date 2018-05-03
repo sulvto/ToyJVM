@@ -6,6 +6,22 @@
 #ifndef TOYJVM_CLASSREADER_H
 #define TOYJVM_CLASSREADER_H
 
+// ConstantPool tag
+#define CONSTANT_Class              7
+#define CONSTANT_Fieldref           9
+#define CONSTANT_Methodref          10
+#define CONSTANT_InterfaceMethodref 11
+#define CONSTANT_String             8
+#define CONSTANT_Integer            3
+#define CONSTANT_Float              4
+#define CONSTANT_Long               5
+#define CONSTANT_Double             6
+#define CONSTANT_NameAndType        12
+#define CONSTANT_Utf8               1
+#define CONSTANT_MethodHandle       15
+#define CONSTANT_MethodType         16
+#define CONSTANT_InvokeDynamic      18
+
 // 通用格式
 struct Unparsed_attributeInfo {
     u1 *info;
@@ -178,6 +194,13 @@ void memberName(const struct MemberInfo *, const struct ConstantPoolInfo *, char
 void descriptor(const struct MemberInfo *, const struct ConstantPoolInfo *, char *);
 
 void attributeName(const u2, const struct ConstantPoolInfo *, char *);
+
+void className(const u2 name_index, const struct ConstantPoolInfo *constant_pool, char *name);
+
+void ConstantPoolInfo_getUtf8String(const struct ConstantPoolInfo *constant_pool, const u2 index, char *name);
+
+struct CONSTANT_NameAndType_info ConstantPoolInfo_getNameAndType(const struct ConstantPoolInfo *constant_pool,
+                                                                 const u2 index);
 
 struct AttributeInfo *constantValueAttribute(const struct MemberInfo *member, struct ConstantPoolInfo *constant_pool);
 

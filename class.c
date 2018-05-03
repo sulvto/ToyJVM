@@ -131,7 +131,7 @@ struct ConstantPool newConstantPool(struct Class *_class, struct  ClassFile *cla
                     struct ClassRef class_ref;
                     class_ref.constant_pool = constant_pool;
                     class_ref._class = NULL;
-                    className(class_file, class_file->constant_pool, class_ref.class_name);
+                    className(class_file, class_file->constant_pool_info, class_ref.class_name);
                     constant_pool.constants[i].class_ref = class_ref;
                     break;
                 case CONSTANT_Methodref:
@@ -140,14 +140,14 @@ struct ConstantPool newConstantPool(struct Class *_class, struct  ClassFile *cla
                     method_ref.method = NULL;
                     method_ref.constant_pool = constant_pool;
                     // name and type
-                    struct CONSTANT_NameAndType_info nameAndType_info = ConstantPoolInfo_getNameAndType(class_file->constant_pool,
+                    struct CONSTANT_NameAndType_info nameAndType_info = ConstantPoolInfo_getNameAndType(class_file->constant_pool_info,
                                                     constant_pool_info.info.methodref_info.name_and_type_index);
-                    ConstantPoolInfo_getUtf8String(class_file->constant_pool, nameAndType_info.name_index,
+                    ConstantPoolInfo_getUtf8String(class_file->constant_pool_info, nameAndType_info.name_index,
                                              method_ref.name);
-                    ConstantPoolInfo_getUtf8String(class_file->constant_pool, nameAndType_info.descriptor_index,
+                    ConstantPoolInfo_getUtf8String(class_file->constant_pool_info, nameAndType_info.descriptor_index,
                                              method_ref.descriptor);
 
-                    className(class_file->this_class, class_file->constant_pool, &method_ref.class_name);
+                    className(class_file->this_class, class_file->constant_pool_info, &method_ref.class_name);
                     constant_pool.constants[i].method_ref = method_ref;
                     break;
                 case CONSTANT_Fieldref:
@@ -156,14 +156,14 @@ struct ConstantPool newConstantPool(struct Class *_class, struct  ClassFile *cla
                     field_ref.field = NULL;
                     field_ref.constant_pool = constant_pool;
                     // name and type
-                    struct CONSTANT_NameAndType_info nameAndType_info = ConstantPoolInfo_getNameAndType(class_file->constant_pool,
+                    struct CONSTANT_NameAndType_info nameAndType_info = ConstantPoolInfo_getNameAndType(class_file->constant_pool_info,
                                                                                                         constant_pool_info.info.fieldref_info.name_and_type_index);
-                    ConstantPoolInfo_getUtf8String(class_file->constant_pool, nameAndType_info.name_index,
+                    ConstantPoolInfo_getUtf8String(class_file->constant_pool_info, nameAndType_info.name_index,
                                                    field_ref.name);
-                    ConstantPoolInfo_getUtf8String(class_file->constant_pool, nameAndType_info.descriptor_index,
+                    ConstantPoolInfo_getUtf8String(class_file->constant_pool_info, nameAndType_info.descriptor_index,
                                                    field_ref.descriptor);
 
-                    className(class_file->this_class, class_file->constant_pool, &field_ref.class_name);
+                    className(class_file->this_class, class_file->constant_pool_info, &field_ref.class_name);
 
                     constant_pool.constants[i].field_ref = field_ref;
                     break;
@@ -174,14 +174,14 @@ struct ConstantPool newConstantPool(struct Class *_class, struct  ClassFile *cla
                     interface_method_ref.method = NULL;
                     interface_method_ref.constant_pool = constant_pool;
                     // name and type
-                    struct CONSTANT_NameAndType_info nameAndType_info = ConstantPoolInfo_getNameAndType(class_file->constant_pool,
+                    struct CONSTANT_NameAndType_info nameAndType_info = ConstantPoolInfo_getNameAndType(class_file->constant_pool_info,
                                                                                                         constant_pool_info.info.interfaceMethodref_info.name_and_type_index);
-                    ConstantPoolInfo_getUtf8String(class_file->constant_pool, nameAndType_info.name_index,
+                    ConstantPoolInfo_getUtf8String(class_file->constant_pool_info, nameAndType_info.name_index,
                                                    interface_method_ref.name);
-                    ConstantPoolInfo_getUtf8String(class_file->constant_pool, nameAndType_info.descriptor_index,
+                    ConstantPoolInfo_getUtf8String(class_file->constant_pool_info, nameAndType_info.descriptor_index,
                                                    interface_method_ref.descriptor);
 
-                    className(class_file->this_class, class_file->constant_pool, &interface_method_ref.class_name);
+                    className(class_file->this_class, class_file->constant_pool_info, &interface_method_ref.class_name);
 
                     constant_pool.constants[i].interface_method_ref = interface_method_ref;
                     break;
@@ -200,16 +200,16 @@ struct Field *newFields(struct Class *_class, struct ClassFile *class_file)
     //
     for (int i = 0; i < fields_count; ++i) {
         fields[i]._class = _class;
-        copyFieldInfo(&class_file->attributes[i], &fields[i], class_file->constant_pool);
+        copyFieldInfo(&class_file->attributes[i], &fields[i], class_file->constant_pool_info);
     }
 }
 
-void copyFieldInfo(struct MemberInfo *field_info, struct Field *field, struct ConstantPoolInfo *constant_pool)
+void copyFieldInfo(struct MemberInfo *field_info, struct Field *field, struct ConstantPoolInfo *constant_pool_info)
 {
     field->access_flags = field_info->access_flags;
-    memberName(field_info, constant_pool, field->name);
-    descriptor(field_info, constant_pool, field->descriptor);
-    struct AttributeInfo *attribute_info = constantValueAttribute(field_info, constant_pool);
+    memberName(field_info, constant_pool_info, field->name);
+    descriptor(field_info, constant_pool_info, field->descriptor);
+    struct AttributeInfo *attribute_info = constantValueAttribute(field_info, constant_pool_info);
     if (attribute_info != NULL) {
         field->const_value_index = attribute_info->info.constant_value.constant_value_index;
     }
@@ -221,8 +221,8 @@ struct Class newClass(struct ClassFile *class_file)
 
     _class->access_flags = class_file->access_flags;
 
-    className(class_file->this_class, class_file->constant_pool, &_class->name);
-    className(class_file->super_class, class_file->constant_pool, &_class.super_class_name);
+    className(class_file->this_class, class_file->constant_pool_info, &_class->name);
+    className(class_file->super_class, class_file->constant_pool_info, &_class.super_class_name);
     // interfaces_count
     _class.constant_pool_count = class_file->constant_pool_count;
     _class.constant_pool = newConstantPool(_class, class_file);

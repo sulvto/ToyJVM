@@ -5,6 +5,7 @@
 #include "rtda.h"
 #include "bytecode.h"
 #include "instruction.h"
+#include "interpreter.h"
 #include <stdlib.h>
 #include <math.h>
 
@@ -84,7 +85,8 @@ void lconst_0_exe(union Context *context, struct Frame *frame)
     pushLong(0, frame->operand_stack);
 }
 
-void lconst_1_exe(union Context *context, struct Frame *frame){
+void lconst_1_exe(union Context *context, struct Frame *frame)
+{
     pushLong(1, frame->operand_stack);
 }
 
@@ -1102,32 +1104,53 @@ void lookupswitch_exe(union Context *context, struct Frame *frame)
 
 void ireturn_exe(union Context *context, struct Frame *frame)
 {
-
+    struct Thread *thread = frame->thread;
+    struct Frame *current_frame = popFrame(thread);
+    struct Frame *invoker_frame = topFrame(thread);
+    int value = popInt(current_frame->operand_stack);
+    pushInt(value, invoker_frame->operand_stack);
 }
 
 void lreturn_exe(union Context *context, struct Frame *frame)
 {
-
+    struct Thread *thread = frame->thread;
+    struct Frame *current_frame = popFrame(thread);
+    struct Frame *invoker_frame = topFrame(thread);
+    long value = popLong(current_frame->operand_stack);
+    pushLong(value, invoker_frame->operand_stack);
 }
 
 void freturn_exe(union Context *context, struct Frame *frame)
 {
+    struct Thread *thread = frame->thread;
+    struct Frame *current_frame = popFrame(thread);
+    struct Frame *invoker_frame = topFrame(thread);
+    float value = popFloat(current_frame->operand_stack);
+    pushFloat(value, invoker_frame->operand_stack);
 
 }
 
 void dreturn_exe(union Context *context, struct Frame *frame)
 {
-
+    struct Thread *thread = frame->thread;
+    struct Frame *current_frame = popFrame(thread);
+    struct Frame *invoker_frame = topFrame(thread);
+    double value = popDouble(current_frame->operand_stack);
+    pushDouble(value, invoker_frame->operand_stack);
 }
 
 void areturn_exe(union Context *context, struct Frame *frame)
 {
-
+    struct Thread *thread = frame->thread;
+    struct Frame *current_frame = popFrame(thread);
+    struct Frame *invoker_frame = topFrame(thread);
+    struct Object *value = popRef(current_frame->operand_stack);
+    pushRef(value, invoker_frame->operand_stack);
 }
 
 void return_exe(union Context *context, struct Frame *frame)
 {
-
+    popFrame(frame->thread);
 }
 
 void getstatic_exe(union Context *context, struct Frame *frame)
@@ -1359,22 +1382,186 @@ void putfield_exe(union Context *context, struct Frame *frame)
 
 void invokevirtual_exe(union Context *context, struct Frame *frame)
 {
+    struct Class *current_class = frame->method->_class;
+    struct ConstantPool *constant_pool = current_class->constant_pool;
+    struct MethodRef *method_ref = constant_pool->constants[context->index].method_ref;
+
+    struct Method *resolved_method = resolvedMethod(method_ref);
+
+    if (Method_isStatic(resolved_method)) {
+        printf("java.lang.IncompatibleClassChangeError");
+    }
+
+    struct Object *ref = getRefFromStackTop(resolved_method->arg_count - 1);
+    if (ref == NULL) {
+        if (strcmp(method_ref->name, "println") == 0) {
+            // TODO
+            _println(frame->operand_stack, method_ref->descriptor);
+        } else {
+            printf("java.lang.NullPointerException");
+        }
+    }
+
+    if (method_isProtdcted(resolved_method) &&
+        Class_isSuperClassOf(resolved_method->_class, current_class) &&
+        strcmp(packageName(resolved_method->_class), packageName(current_class)) != 0 &&
+        ref->_class != current_class &&
+        !Class_isSuperClassOf(ref->_class, current_class)
+            ) {
+        printf("java.lang.IllegalAccessError");
+    }
+
+    struct Method *invoke_method = lookupMethodInClass(ref->_class, method_ref->name, method_ref->descriptor);
+
+    if (invoke_method == NULL || Method_isAbstract(invoke_method)) {
+        printf("java.lang.AbstractMethodError");
+    }
+
+    invokeMethod(frame, invoke_method);
 
 }
 
 void invokespecial_exe(union Context *context, struct Frame *frame)
 {
+    struct Class *current_class = frame->method->_class;
+    struct MethodRef *method_ref = current_class->constant_pool->constants[context->index].method_ref;
+    struct Class *resolved_class;
 
+    resolvedClass(method_ref, resolved_class);
+
+    struct Method *resolved_method = resolvedMethod(method_ref);
+
+    if (strcmp(resolved_method->name == "<init>") == 0 && resolved_method->_class != resolved_class) {
+        printf("java.lang.NoSuchMethodError");
+    }
+
+    if (Method_isStatic(resolved_method)) {
+        printf("java.lang.IncompatibleClassChangeError");
+    }
+
+    struct OperandStack *stack = frame->operand_stack;
+
+    // get ref from top
+    struct Object *ref = getRefFromStackTop(stack, resolved_method->arg_count);
+    if (ref == NULL) {
+        printf("java.lang.NullPointerException");
+    }
+
+    if (method_isProtdcted(resolved_method) &&
+        Class_isSuperClassOf(resolved_method->_class, current_class) &&
+        strcmp(packageName(resolved_method->_class), packageName(current_class)) != 0 &&
+        ref->_class != current_class &&
+        !Class_isSuperClassOf(ref->_class, current_class)
+            ) {
+        printf("java.lang.IllegalAccessError");
+    }
+
+    struct Method *invoke_method = resolved_method;
+    if (Class_isSuper(current_class) &&
+            Class_isSuperClassOf(resolved_class, current_class) &&
+            strcmp(resolved_method->name, "<init>") != 0) {
+        invoke_method = lookupMethodInClass(current_class->super_class, method_ref->name, method_ref->descriptor);
+    }
+
+    if (invoke_method == NULL || Method_isAbstract(invoke_method)) {
+        printf("java.lang.AbstractMethodError");
+    }
+
+    invokeMethod(frame, invoke_method);
+}
+
+struct Object *getRefFromStackTop(struct OperandStack *stack, u4 i)
+{
+    return stack->slot[stack->size - 1 - i].ref;
+}
+
+void _println(struct OperandStack *stack, char *descriptor)
+{
+    switch (descriptor) {
+        case "(Z)V":
+            printf("%v\n", popInt(stack) != 0);
+            break;
+        case "(C)V":
+            printf("%c\n", popInt(stack));
+            break;
+        case "(B)V":
+            printf("%v\n", popInt(stack));
+            break;
+        case "(S)V":
+            printf("%v\n", popInt(stack));
+            break;
+        case "(I)V":
+            printf("%v\n", popInt(stack));
+            break;
+        case "(F)V":
+            printf("%v\n", popFloat(stack));
+            break;
+        case "(J)V":
+            printf("%v\n", popLong(stack));
+            break;
+        case "(D)V":
+            printf("%v\n", popDouble(stack));
+            break;
+        default:
+            // TODO
+            peintf("println: %s\n", descriptor);
+            break;
+    }
+    popRef(stack);
 }
 
 void invokestatic_exe(union Context *context, struct Frame *frame)
 {
+    struct Method *method = frame->method;
+    struct ConstantPool *constant_pool = method->_class->constant_pool;
+    struct MethodRef method_ref = constant_pool->constants[context->index].method_ref;
+    struct Method *resolved_method = resolvedMethod(method_ref);
 
+    if (!Method_isStatic(resolved_method)) {
+        printf("java.lang.IncompatibleClassChangeError");
+    }
+
+    invokeMethod(frame, resolved_method);
+
+}
+
+void invokeinterface_fetchOp(union Context *context, struct Bytecode *data)
+{
+    context->index = readBytecodeU2(data);
+    readBytecodeU1(data);       // count
+    readBytecodeU1(data);       // must be 0
 }
 
 void invokeinterface_exe(union Context *context, struct Frame *frame)
 {
+    struct ConstantPool *constant_pool = frame->method->_class->constant_pool;
+    struct InterfaceMethodRef *interface_method_ref = &constant_pool->constants[context->index].interface_method_ref;
+    struct Method *resolved_method = resolvedInterfaceMethod(interface_method_ref);
+    if (Method_isStatic(resolved_method) || Method_isPrivate(resolved_method)) {
+        printf("java.lang.IncompatibleClassChangeError");
+    }
 
+    struct Object *ref = getRefFromStackTop(frame->operand_stack, resolved_method->arg_count - 1);
+    if (ref == NULL) {
+        printf("java.lang.NullPointerException");
+    }
+
+    struct Class *method_class;
+    resolvedClass(interface_method_ref, method_class);
+    if (!Class_isImplements(ref->_class, method_class)) {
+        printf("java.lang.IncompatibleClassChangeError");
+    }
+
+    struct Method *invoke_method = lookupMethodInClass(ref->_class, interface_method_ref->name, interface_method_ref->descriptor);
+    if (invoke_method == NULL || Method_isAbstract(invoke_method)) {
+        printf("java.lang.AbstractMethodError");
+    }
+
+    if (!Method_isPublic(invoke_method)) {
+        printf("java.lang.IllegalAccessError");
+    }
+
+    invokeMethod(frame, invoke_method);
 }
 
 void invokedynamic_exe(union Context *context, struct Frame *frame)
@@ -1864,13 +2051,13 @@ struct Instruction newInstruction(u1 opcode)
     } else if (PUTFIELD == opcode) {
         return makeInstruction(index16_fetchOp, putfield_exe);
     } else if (INVOKEVIRTUAL == opcode) {
-        return makeInstruction(nop_fetchOp, invokevirtual_exe);
+        return makeInstruction(index16_fetchOp, invokevirtual_exe);
     } else if (INVOKESPECIAL == opcode) {
-        return makeInstruction(nop_fetchOp, invokespecial_exe);
+        return makeInstruction(index16_fetchOp, invokespecial_exe);
     } else if (INVOKESTATIC == opcode) {
-        return makeInstruction(nop_fetchOp, invokestatic_exe);
+        return makeInstruction(index16_fetchOp, invokestatic_exe);
     } else if (INVOKEINTERFACE == opcode) {
-        return makeInstruction(nop_fetchOp, invokeinterface_exe);
+        return makeInstruction(invokeinterface_fetchOp, invokeinterface_exe);
     } else if (INVOKEDYNAMIC == opcode) {
         return makeInstruction(nop_fetchOp, invokedynamic_exe);
     } else if (NEW == opcode) {

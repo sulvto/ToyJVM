@@ -58,6 +58,8 @@ void pushFrame(struct Frame *frame, struct Thread *thread);
 
 struct Frame *popFrame(struct Thread *thread);
 
+struct Frame *topFrame(struct Thread *thread);
+
 
 void pushInt(const int, struct OperandStack *);
 

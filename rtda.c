@@ -83,6 +83,17 @@ struct Frame *popFrame(struct Thread *thread)
     return top;
 }
 
+struct Frame *topFrame(struct Thread *thread)
+{
+    if (thread->stack->top == NULL) {
+        // TODO
+        printf("jvm stack is empty!\n");
+    }
+
+    return thread->stack->top;
+}
+
+
 void pushInt(const int value, struct OperandStack *operandStack)
 {
     operandStack->slot[operandStack->size++].num = value;

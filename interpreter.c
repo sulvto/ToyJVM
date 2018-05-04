@@ -24,18 +24,20 @@ void invokeMethod(struct Frame *invokerFrame, struct Method *method)
 
 
 
-void loop(struct Thread *thread, u1 *bytecode)
+void loop(struct Thread *thread)
 {
-    struct Frame *frame = popFrame(thread);
 
     struct Bytecode *bytecode_data = (struct Bytecode *) malloc(sizeof(struct Bytecode));
 
 
     while (1) {
+        // current frame
+        struct Frame *frame = topFrame(thread);
+
         int pc = frame->nextPC;
         thread->pc = pc;
 
-        reset(bytecode, pc, bytecode_data);
+        reset(frame->method->code, pc, bytecode_data);
         u1 opcode = readBytecodeU1(bytecode_data);
 
 
@@ -50,17 +52,19 @@ void loop(struct Thread *thread, u1 *bytecode)
         printf("pc:%d\n", pc);
 
         free(context);
+
+        // stack is empty.
+        if (thread->stack->top == NULL) {
+            break;
+        }
     }
 }
 
 void interpret(struct Method *main_method)
 {
-    struct Code_attributeInfo code_attribute = main_method->attributes->code;
-    const u4 code_length = code_attribute.code_length;
-
     struct Thread *thread = newThread();
     struct Frame *frame = newFrame(thread, main_method);
     pushFrame(frame, thread);
 
-    loop(thread, code_attribute.code);
+    loop(thread);
 }

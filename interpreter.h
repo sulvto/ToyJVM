@@ -11,4 +11,7 @@
 
 void interpret(struct Method *main);
 
+void invokeMethod(struct Frame *invokerFrame, struct Method *method);
+
+
 #endif //TOYJVM_INTERPRETER_H

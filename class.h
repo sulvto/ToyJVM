@@ -111,16 +111,35 @@ int Class_isInterface(struct Class *_this);
 
 int Class_isAbstract(struct Class *_this);
 
+int Class_isSuperClassOf(struct Class *_this);
+
+int Class_isSuper(struct Class *_this);
+
+int Class_isImplements(struct Class *_this, struct Class *_class);
+
+int Method_isStatic(struct Method *_this);
+
+int Method_isPrivate(struct Method *_this);
+
+int Method_isAbstract(struct Method *_this);
+
+
+struct Method *resolvedInterfaceMethod(struct InterfaceMethodRef *interface_method_ref);
+
+struct Method *resolvedMethod(struct MethodRef *method_ref);
+
 struct Field *resolvedField(struct FieldRef *field_ref);
 
+struct Method *lookupMethodInClass(struct Class *_class, char *name, char *descriptor);
 
 
-#define resolvedClass(ref, result) \
-    if (ref->_class == NULL) {    \
-        resolveClassRef(ref); \
-    }   \
 
-    result = ref->_class;   \
+#define resolvedClass(ref, result)  \
+    if (ref->_class == NULL) {      \
+        resolveClassRef(ref);       \
+    }                               \
+
+    result = ref->_class;           \
 
 #define resolveClassRef(ref) \
     struct Class *d = ref->constant_pool->_class; \

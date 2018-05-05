@@ -6,6 +6,21 @@
 #include "rtda.h"
 #include "classreader.h"
 #include "flags.h"
+#include <stdlib.h>
+
+struct Field *lookupField(struct Class *_class, char *name, char *descriptor);
+
+struct Method *lookupMethodInInterfaces(struct Class **interfaces, u2 count, char *name, char *descriptor);
+
+struct Method *lookupMethod(struct Class *_class, char *name, char *descriptor);
+
+struct Method *lookupInterfaceMethod(struct Class *_class, char *name, char *descriptor);
+
+
+
+
+
+
 
 void verify(struct Class *_class)
 {
@@ -215,9 +230,9 @@ void copyFieldInfo(struct MemberInfo *field_info, struct Field *field, struct Co
     }
 }
 
-struct Class newClass(struct ClassFile *class_file)
+struct Class *newClass(struct ClassFile *class_file)
 {
-    struct Class _class;
+    struct Class *_class = (struct Class *) malloc(sizeof(struct Class));
 
     _class->access_flags = class_file->access_flags;
 
@@ -265,7 +280,7 @@ struct Class *defineClass(struct s_class_data *class_data)
     resolveSuperClass(_class);
     resolveInterfaces(_class);
     // map to
-    return readClassFile(name);
+    return readClassFile(_class->name);
 }
 
 struct Class *parseClass(struct s_class_data *class_data)
@@ -311,7 +326,7 @@ struct Method *lookupInterfaceMethod(struct Class *_class, char *name, char *des
 {
     for (int i = 0; i < _class->methods_count; ++i) {
         if (strcmp(_class->methods[i].name, name) == 0 && strcmp(_class->methods[i].descriptor, descriptor) == 0) {
-            return _class->methods[i];
+            return &_class->methods[i];
         }
     }
 
@@ -354,7 +369,7 @@ struct Method *lookupMethod(struct Class *_class, char *name, char *descriptor)
 {
     struct Method *method = lookupMethodInClass(_class, name, descriptor);
     if (method == NULL) {
-        method = lookupMethodInInterfaces(_class->interface_count)
+        method = lookupMethodInInterfaces(_class->interface_class, _class->interface_count, name, descriptor);
     }
 
     return method;
@@ -364,19 +379,20 @@ struct Method *lookupMethodInClass(struct Class *_class, char *name, char *descr
 {
     for (int i = 0; i < _class->methods_count; ++i) {
         if (strcmp(_class->methods[i].name, name) == 0 && strcmp(_class->methods[i].descriptor, descriptor) == 0) {
-            return _class->methods[i];
+            return &_class->methods[i];
         }
     }
 
     return NULL;
 }
+
 struct Method *lookupMethodInInterfaces(struct Class **interfaces, u2 count , char *name, char *descriptor)
 {
     struct Method *method;
 
     for (int i = 0; i < count; ++i) {
         for (int j = 0; j < interfaces[i]->methods_count; ++j) {
-            method = interfaces[i]->methods[j];
+            method = &interfaces[i]->methods[j];
             if (strcmp(method->name, name) == 0 && strcmp(method->descriptor, descriptor) == 0) {
                 return method;
             }
@@ -424,7 +440,7 @@ struct Field *lookupField(struct Class *_class, char *name, char *descriptor)
 {
     for (int i = 0; i < _class->fields_count; ++i) {
         if (strcmp(_class->fields[i].name, name) == strcmp(_class->fields[i].descriptor, descriptor) == 0) {
-            return _class->fields[i];
+            return &_class->fields[i];
         }
     }
 
@@ -460,14 +476,14 @@ int Object_isInterfaceOf(struct Object *_this, struct Class *_class)
 //    _this->_class
 }
 
-int Field_isAccessibleTo(struct Field *_this, struct Class *_class)
+int Field_isAccessibleTo(struct Field *_this, struct Class *_other)
 {
     if (isPublic(_this)) {
         return 1;
     }
 
     if (isProtected(_this)) {
-        return _this->_class == _class || isSubClassOf(_this->_class, _class) ||
+        return _this->_class == _other || isSubClassOf(_this->_class, _other) ||
                strcmp(packageName(_this->_class), packageName(_other)) == 0;
     }
 
@@ -475,7 +491,7 @@ int Field_isAccessibleTo(struct Field *_this, struct Class *_class)
         return strcmp(packageName(_this->_class), packageName(_other)) == 0;
     }
 
-    return _this->_class == _class;
+    return _this->_class == _other;
 }
 
 struct Object *newObject(struct Class *_class)
@@ -483,4 +499,35 @@ struct Object *newObject(struct Class *_class)
     struct Object *object = (struct Object *) malloc(sizeof(struct Object));
     object->_class = _class;
     object->fields = newSlots(_class->interface_slot_count);
+}
+
+void initSuperClass(struct Thread *thread, struct Class *_class)
+{
+
+}
+
+void initClass(struct Thread *thread, struct Class *_class)
+{
+    _class->init_started = 1;
+    scheduleClinit(thread, _class);
+    initSuperClass(thread, _class);
+}
+
+struct Method *getStaticMethod(struct Class *_class, char *name, char *descriptor)
+{
+
+}
+
+struct Method *getClinitMethod(struct Class *_class)
+{
+    return getStaticMethod(_class, "<clinit>", "()V");
+}
+
+void scheduleClinit(struct Thread *thread, struct Class *_class)
+{
+    struct Method *clinit = getClinitMethod(_class);
+    if (clinit != NULL) {
+        struct Frame *frame = newFrame(thread, clinit);
+        pushFrame(frame, thread);
+    }
 }

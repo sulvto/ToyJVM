@@ -95,7 +95,7 @@ void setDouble(const unsigned int index, double value, struct Slots *slots);
 
 void setRef(const unsigned int index, struct Object *value, const struct Slots *slots);
 
-void setSlot(const unsigned int index, struct Slot *value, const struct Slots *slots);
+void setSlot(const unsigned int index, struct Slot value, const struct Slots *slots);
 
 int getInt(const unsigned int index, struct Slots *slots);
 

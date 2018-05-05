@@ -8,16 +8,17 @@
 #include "rtda.h"
 #include "interpreter.h"
 #include "instruction.h"
+#include <stddef.h>
 
-void invokeMethod(struct Frame *invokerFrame, struct Method *method)
+void invokeMethod(struct Frame *invoker_frame, struct Method *method)
 {
-    struct Thread *thread = invokerFrame->thread;
-    struct Frame *newFrame = newFrame(thread, method);
-    pushFrame(newFrame, thread);
+    struct Thread *thread = invoker_frame->thread;
+    struct Frame *new_frame = newFrame(thread, method);
+    pushFrame(new_frame, thread);
     if (method->arg_count > 0) {
         for (int i = method->arg_count - 1; i >= 0; --i) {
-            struct Slot *slot = popSlot(invokerFrame->operand_stack);
-            setSlot(i, *slot, newFrame->localVars);
+            struct Slot slot = popSlot(invoker_frame->operand_stack);
+            setSlot(i, slot, new_frame->localVars);
         }
     }
 }

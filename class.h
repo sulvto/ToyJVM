@@ -18,12 +18,6 @@ struct Field {
     struct Class *_class;
 };
 
-union Constant {
-    struct MethodRef method_ref;
-    struct ClassRef class_ref;
-    struct FieldRef field_ref;
-    struct InterfaceMethodRef interface_method_ref;
-};
 
 struct Method {
     u2      access_flags;
@@ -61,14 +55,14 @@ struct Class {
     u4                      interface_slot_count;
     u4                      static_slot_count;
     struct Slots            *static_vars;
+
+    // bool, 0 or 1
+    u2                      init_started;
 };
 
 struct ClassLoader {
     // map
 };
-
-struct Class *loadClass(const char *name);
-
 
 struct ClassRef {
     struct ConstantPool *constant_pool;
@@ -103,6 +97,17 @@ struct InterfaceMethodRef {
     char                *descriptor;
 };
 
+union Constant {
+    struct MethodRef            *method_ref;
+    struct ClassRef             *class_ref;
+    struct FieldRef             *field_ref;
+    struct InterfaceMethodRef   *interface_method_ref;
+};
+
+struct Class *loadClass(const struct ClassLoader *loader, const char *name);
+
+void initClass(struct Thread *, struct Class*);
+
 struct Object *newObject(struct Class *_class);
 
 int Object_isInterfaceOf(struct Object *_this, struct Class *_class);
@@ -111,7 +116,7 @@ int Class_isInterface(struct Class *_this);
 
 int Class_isAbstract(struct Class *_this);
 
-int Class_isSuperClassOf(struct Class *_this);
+int Class_isSuperClassOf(struct Class *_this, struct Class *_class);
 
 int Class_isSuper(struct Class *_this);
 
@@ -138,16 +143,16 @@ struct Method *lookupMethodInClass(struct Class *_class, char *name, char *descr
     if (ref->_class == NULL) {      \
         resolveClassRef(ref);       \
     }                               \
-
     result = ref->_class;           \
 
-#define resolveClassRef(ref) \
-    struct Class *d = ref->constant_pool->_class; \
-    struct Class *c = loadClass(d->loader, ref->class_name); \
-    if (isAccessible(c, d) == 0) { \
-        printf("java.lang.IllegalAccessError"); \
-    } \
-    ref->_class = c; \
+
+#define resolveClassRef(ref)                                    \
+    struct Class *d = ref->constant_pool->_class;               \
+    struct Class *c = loadClass(d->loader, ref->class_name);    \
+    if (isAccessible(c, d) == 0) {                              \
+        printf("java.lang.IllegalAccessError");                 \
+    }                                                           \
+    ref->_class = c;                                            \
 
 
 #endif //TOYJVM_CLASS_H

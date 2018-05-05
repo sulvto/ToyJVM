@@ -6,6 +6,7 @@
 #include "bytecode.h"
 #include "instruction.h"
 #include "interpreter.h"
+#include "class.h"
 #include <stdlib.h>
 #include <math.h>
 
@@ -1155,22 +1156,13 @@ void return_exe(union Context *context, struct Frame *frame)
 
 void getstatic_exe(union Context *context, struct Frame *frame)
 {
-    struct Method *current_method = frame->method;
-    struct Class *current_class = current_method->_class;
-    union Constant *constant = _class->constant_pool[context->index];
-    struct Field *field = resolvedField(constant->field_ref);
-    struct Class *_class = field->_class;
-
+    struct FieldRef *field_ref = frame->method->_class->constant_pool->constants[context->index].field_ref;
+    struct Class *_class =field_ref->_class;
+    struct Field *field = resolvedField(field_ref);
     // TODO
 
     if (!Field_isStatic(field)) {
         printf("java.lang.IncompatibleClassChangeError");
-    }
-
-    if (Field_isFinal(field)) {
-        if (current_class != _class || strcmp(current_method->name, "<clinit>") == 1) {
-            printf("java.lang.IllegalAccessError");
-        }
     }
 
     u4 slot_id = field->slot_id;
@@ -1205,9 +1197,18 @@ void getstatic_exe(union Context *context, struct Frame *frame)
 
 void putstatic_exe(union Context *context, struct Frame *frame)
 {
-    union Constant *constant = frame->method->_class->constant_pool[context->index];
-    struct Field *field = resolvedField(constant->field_ref);
+    struct Method *current_method = frame->method;
+    current_method->_class->constant_pool;
+    struct Class *current_class = current_method->_class;
+    struct FieldRef *field_ref = current_class->constant_pool->constants[context->index].field_ref;
+    struct Field *field = resolvedField(field_ref);
     struct Class *_class = field->_class;
+
+    if (_class->init_started == 0) {
+        revertNextPC(frame);
+        initClass(frame->thread, _class);
+        return;
+    }
 
     // TODO
 
@@ -1253,8 +1254,10 @@ void putstatic_exe(union Context *context, struct Frame *frame)
 
 void getfield_exe(union Context *context, struct Frame *frame)
 {
-    union Constant *constant = frame->method->_class->constant_pool[context->index];
-    struct Field *field = resolvedField(constant->field_ref);
+    struct Method *current_method = frame->method;
+    struct Class *current_class = current_method->_class;
+    struct FieldRef *field_ref = current_class->constant_pool->constants[context->index].field_ref;
+    struct Field *field = resolvedField(field_ref);
     struct Class *_class = field->_class;
 
     // TODO
@@ -1305,10 +1308,11 @@ void getfield_exe(union Context *context, struct Frame *frame)
 
 void putfield_exe(union Context *context, struct Frame *frame)
 {
-    union Constant *constant = frame->method->_class->constant_pool[context->index];
-    struct Field *field = resolvedField(constant->field_ref);
+    struct Method *current_method = frame->method;
+    struct Class *current_class = current_method->_class;
+    struct FieldRef *field_ref = current_class->constant_pool->constants[context->index].field_ref;
+    struct Field *field = resolvedField(field_ref);
     struct Class *_class = field->_class;
-
     // TODO
 
     if (Field_isStatic(field)) {
@@ -1329,55 +1333,65 @@ void putfield_exe(union Context *context, struct Frame *frame)
         case 'B':
         case 'C':
         case 'S':
-        case 'I':
-            int val = popInt(stack);
+        case 'I': {
+            int value = popInt(stack);
             struct Object *ref = popRef(stack);
             if (ref == NULL) {
                 printf("java.lang.NullPointerException");
             }
 
-            setInt(slot_id, val, ref->fields);
+            setInt(slot_id, value, ref->fields);
             break;
-        case 'F':
-            float val = popFloat(stack);
+        }
+        case 'F': {
+            float value = popFloat(stack);
             struct Object *ref = popRef(stack);
             if (ref == NULL) {
                 printf("java.lang.NullPointerException");
             }
 
-            setFloat(slot_id, val, ref->fields);
+            setFloat(slot_id, value, ref->fields);
             break;
-        case 'J':
-            long val = popLong(stack);
+        }
+        case 'J': {
+            long value = popLong(stack);
             struct Object *ref = popRef(stack);
             if (ref == NULL) {
                 printf("java.lang.NullPointerException");
             }
 
-            setLong(slot_id, val, ref->fields);
+            setLong(slot_id, value, ref->fields);
             break;
-        case 'D':
-            double val = popDouble(stack);
+        }
+        case 'D': {
+            double d = popDouble(stack);
             struct Object *ref = popRef(stack);
             if (ref == NULL) {
-                printf("java.lang.NullPointerException");
+                printf("java.lang.NullPointerException\n");
             }
 
-            setDouble(slot_id, val, ref->fields);
+            setDouble(slot_id, d, ref->fields);
             break;
+        }
         case 'L':
-        case '[':
-            struct Object *val = popRef(stack);
+        case '[': {
+            struct Object *value = popRef(stack);
             struct Object *ref = popRef(stack);
             if (ref == NULL) {
                 printf("java.lang.NullPointerException");
             }
 
-            setRef(slot_id, val, ref->fields);
+            setRef(slot_id, value, ref->fields);
             break;
+        }
         default:
             break;
     }
+}
+
+struct Object *getRefFromStackTop(struct OperandStack *stack, u4 i)
+{
+    return stack->slot[stack->size - 1 - i].ref;
 }
 
 void invokevirtual_exe(union Context *context, struct Frame *frame)
@@ -1392,7 +1406,7 @@ void invokevirtual_exe(union Context *context, struct Frame *frame)
         printf("java.lang.IncompatibleClassChangeError");
     }
 
-    struct Object *ref = getRefFromStackTop(resolved_method->arg_count - 1);
+    struct Object *ref = getRefFromStackTop(frame->operand_stack, resolved_method->arg_count - 1);
     if (ref == NULL) {
         if (strcmp(method_ref->name, "println") == 0) {
             // TODO
@@ -1470,42 +1484,27 @@ void invokespecial_exe(union Context *context, struct Frame *frame)
     invokeMethod(frame, invoke_method);
 }
 
-struct Object *getRefFromStackTop(struct OperandStack *stack, u4 i)
-{
-    return stack->slot[stack->size - 1 - i].ref;
-}
-
 void _println(struct OperandStack *stack, char *descriptor)
 {
-    switch (descriptor) {
-        case "(Z)V":
-            printf("%v\n", popInt(stack) != 0);
-            break;
-        case "(C)V":
-            printf("%c\n", popInt(stack));
-            break;
-        case "(B)V":
-            printf("%v\n", popInt(stack));
-            break;
-        case "(S)V":
-            printf("%v\n", popInt(stack));
-            break;
-        case "(I)V":
-            printf("%v\n", popInt(stack));
-            break;
-        case "(F)V":
-            printf("%v\n", popFloat(stack));
-            break;
-        case "(J)V":
-            printf("%v\n", popLong(stack));
-            break;
-        case "(D)V":
-            printf("%v\n", popDouble(stack));
-            break;
-        default:
-            // TODO
-            peintf("println: %s\n", descriptor);
-            break;
+    if (strcmp(descriptor, "(Z)V") == 0) {
+        printf("%v\n", popInt(stack) != 0);
+    } else if (strcmp(descriptor, "(C)V") == 0) {
+        printf("%c\n", popInt(stack));
+    } else if (strcmp(descriptor, "(B)V") == 0) {
+        printf("%v\n", popInt(stack));
+    } else if (strcmp(descriptor, "(S)V") == 0) {
+        printf("%v\n", popInt(stack));
+    } else if (strcmp(descriptor, "(I)V") == 0) {
+        printf("%v\n", popInt(stack));
+    } else if (strcmp(descriptor, "(F)V") == 0) {
+        printf("%v\n", popFloat(stack));
+    } else if (strcmp(descriptor, "(J)V") == 0) {
+        printf("%v\n", popLong(stack));
+    } else if (strcmp(descriptor, "(D)V") == 0) {
+        printf("%v\n", popDouble(stack));
+    } else {
+        // TODO
+        printf("println: %s\n", descriptor);
     }
     popRef(stack);
 }
@@ -1514,11 +1513,17 @@ void invokestatic_exe(union Context *context, struct Frame *frame)
 {
     struct Method *method = frame->method;
     struct ConstantPool *constant_pool = method->_class->constant_pool;
-    struct MethodRef method_ref = constant_pool->constants[context->index].method_ref;
+    struct MethodRef *method_ref = constant_pool->constants[context->index].method_ref;
     struct Method *resolved_method = resolvedMethod(method_ref);
 
     if (!Method_isStatic(resolved_method)) {
         printf("java.lang.IncompatibleClassChangeError");
+    }
+
+    if (resolved_method->_class->init_started == 0) {
+        revertNextPC(frame);
+        initClass(frame->thread, resolved_method->_class);
+        return;
     }
 
     invokeMethod(frame, resolved_method);
@@ -1571,10 +1576,16 @@ void invokedynamic_exe(union Context *context, struct Frame *frame)
 
 void new_exe(union Context *context, struct Frame *frame)
 {
-    struct ConstantPool *constantPool = frame->method->_class->constant_pool[context->index];
-    union Constant *constant = constantPool->constants[context->index];
-    struct Class *_class;
-    resolvedClass(constant->class_ref, _class);
+    struct ClassRef *class_ref = frame->method->_class->constant_pool->constants[context->index].class_ref;
+    // TODO free?
+    struct Class *_class = (struct Class *) malloc(sizeof(struct Class));
+    resolvedClass(class_ref, _class);
+
+    if (_class->init_started == 0) {
+        revertNextPC(frame);
+        initClass(frame->thread, _class);
+        return;
+    }
 
     if (Class_isInterface(_class) || Class_isAbstract(_class)) {
         printf("java.lang.InstantiationError");
@@ -1619,11 +1630,11 @@ void instanceof_exe(union Context *context, struct Frame *frame)
         return;
     }
 
-    union Constant *constant = frame->method->_class->constant_pool[context->index];
+    struct ClassRef *class_ref = frame->method->_class->constant_pool->constants[context->index].class_ref;
 
-    resolveClassRef(constant->class_ref);
+    resolveClassRef(class_ref);
 
-    if (Field_isInterfaceOf(ref, constant->class_ref._class)) {
+    if (Field_isInterfaceOf(ref, class_ref->_class)) {
         pushInt(1, stack);
     } else {
         pushInt(0, stack);
@@ -2094,4 +2105,9 @@ struct Instruction newInstruction(u1 opcode)
         // TODO
         printf("Unsupported opcode: 0x%x\n", opcode);
     }
+}
+
+void revertNextPC(struct Frame *frame)
+{
+    frame->nextPC = frame->thread->pc;
 }

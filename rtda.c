@@ -198,7 +198,7 @@ void setRef(const unsigned int index, struct Object *value, const struct Slots *
     slots->value[index].ref = value;
 }
 
-void setSlot(const unsigned int index, struct Slot *value, const struct Slots *slots)
+void setSlot(const unsigned int index, struct Slot value, const struct Slots *slots)
 {
     slots->value[index] = value;
 }

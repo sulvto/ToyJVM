@@ -356,7 +356,7 @@ void memberName(const struct MemberInfo *member, const struct ConstantPoolInfo *
 
 void descriptor(const struct MemberInfo *member, const struct ConstantPoolInfo *constant_pool_info, char *desc)
 {
-    ConstantPoolInfo_getUtf8String(constant_pool_info, member->descriptor_index, name);
+    ConstantPoolInfo_getUtf8String(constant_pool_info, member->descriptor_index, desc);
 }
 
 void attributeName(const u2 attribute_name_index, const struct ConstantPoolInfo *constant_pool_info, char *name)

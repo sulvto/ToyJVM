@@ -5,9 +5,9 @@
 CC			= gcc
 LD			= ld
 SOURCES     = bytecode.c interpreter.c rtda.c classreader.c instruction.c \
-                main.c
+                class.c main.c
 OBJECTS     = bytecode.o interpreter.o instruction.o \
-			    classreader.o rtda.o main.o\
+			    classreader.o rtda.o class.o main.o\
 
 CFLAGS      = -std=c99
 

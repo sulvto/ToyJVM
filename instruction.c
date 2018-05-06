@@ -988,7 +988,7 @@ void getstatic_exe(union Context *context, struct Frame *frame) {
     struct Field *field = resolvedField(field_ref);
     // TODO
 
-    if (!Field_isStatic(field)) {
+    if (!isStatic(field->access_flags)) {
         printf("java.lang.IncompatibleClassChangeError");
     }
 
@@ -1038,11 +1038,11 @@ void putstatic_exe(union Context *context, struct Frame *frame) {
 
     // TODO
 
-    if (!Field_isStatic(field)) {
+    if (!isStatic(field->access_flags)) {
         printf("java.lang.IncompatibleClassChangeError");
     }
 
-    if (Field_isFinal(field)) {
+    if (isFinal(field->access_flags)) {
         if (current_class != _class || strcmp(current_method->name, "<clinit>") == 1) {
             printf("java.lang.IllegalAccessError");
         }
@@ -1087,11 +1087,11 @@ void getfield_exe(union Context *context, struct Frame *frame) {
 
     // TODO
 
-    if (Field_isStatic(field)) {
+    if (isStatic(field->access_flags)) {
         printf("java.lang.IncompatibleClassChangeError");
     }
 
-    if (Field_isFinal(field)) {
+    if (isFinal(field->access_flags)) {
         if (current_class != _class || strcmp(current_method->name, "<init>") == 1) {
             printf("java.lang.IllegalAccessError");
         }
@@ -1139,11 +1139,11 @@ void putfield_exe(union Context *context, struct Frame *frame) {
     struct Class *_class = field->_class;
     // TODO
 
-    if (Field_isStatic(field)) {
+    if (isStatic(field->access_flags)) {
         printf("java.lang.IncompatibleClassChangeError");
     }
 
-    if (Field_isFinal(field)) {
+    if (isFinal(field->access_flags)) {
         if (current_class != _class || strcmp(current_method->name, "<init>") == 1) {
             printf("java.lang.IllegalAccessError");
         }
@@ -1224,7 +1224,7 @@ void invokevirtual_exe(union Context *context, struct Frame *frame) {
 
     struct Method *resolved_method = resolvedMethod(method_ref);
 
-    if (Method_isStatic(resolved_method)) {
+    if (isStatic(resolved_method->access_flags)) {
         printf("java.lang.IncompatibleClassChangeError");
     }
 
@@ -1238,7 +1238,7 @@ void invokevirtual_exe(union Context *context, struct Frame *frame) {
         }
     }
 
-    if (method_isProtdcted(resolved_method) &&
+    if (isProtdcted(resolved_method->access_flags) &&
         Class_isSuperClassOf(resolved_method->_class, current_class) &&
         strcmp(packageName(resolved_method->_class), packageName(current_class)) != 0 &&
         ref->_class != current_class &&
@@ -1249,7 +1249,7 @@ void invokevirtual_exe(union Context *context, struct Frame *frame) {
 
     struct Method *invoke_method = lookupMethodInClass(ref->_class, method_ref->name, method_ref->descriptor);
 
-    if (invoke_method == NULL || Method_isAbstract(invoke_method)) {
+    if (invoke_method == NULL || isAbstract(invoke_method->access_flags)) {
         printf("java.lang.AbstractMethodError");
     }
 
@@ -1270,7 +1270,7 @@ void invokespecial_exe(union Context *context, struct Frame *frame) {
         printf("java.lang.NoSuchMethodError");
     }
 
-    if (Method_isStatic(resolved_method)) {
+    if (isStatic(resolved_method->access_flags)) {
         printf("java.lang.IncompatibleClassChangeError");
     }
 
@@ -1282,7 +1282,7 @@ void invokespecial_exe(union Context *context, struct Frame *frame) {
         printf("java.lang.NullPointerException");
     }
 
-    if (method_isProtdcted(resolved_method) &&
+    if (isProtdcted(resolved_method->access_flags) &&
         Class_isSuperClassOf(resolved_method->_class, current_class) &&
         strcmp(packageName(resolved_method->_class), packageName(current_class)) != 0 &&
         ref->_class != current_class &&
@@ -1292,13 +1292,13 @@ void invokespecial_exe(union Context *context, struct Frame *frame) {
     }
 
     struct Method *invoke_method = resolved_method;
-    if (Class_isSuper(current_class) &&
+    if (isSuper(current_class->access_flags) &&
         Class_isSuperClassOf(resolved_class, current_class) &&
         strcmp(resolved_method->name, "<init>") != 0) {
         invoke_method = lookupMethodInClass(current_class->super_class, method_ref->name, method_ref->descriptor);
     }
 
-    if (invoke_method == NULL || Method_isAbstract(invoke_method)) {
+    if (invoke_method == NULL || isAbstract(invoke_method->access_flags)) {
         printf("java.lang.AbstractMethodError");
     }
 
@@ -1335,7 +1335,7 @@ void invokestatic_exe(union Context *context, struct Frame *frame) {
     struct MethodRef *method_ref = constant_pool->constants[context->index].method_ref;
     struct Method *resolved_method = resolvedMethod(method_ref);
 
-    if (!Method_isStatic(resolved_method)) {
+    if (!isStatic(resolved_method->access_flags)) {
         printf("java.lang.IncompatibleClassChangeError");
     }
 
@@ -1359,7 +1359,7 @@ void invokeinterface_exe(union Context *context, struct Frame *frame) {
     struct ConstantPool *constant_pool = frame->method->_class->constant_pool;
     struct InterfaceMethodRef *interface_method_ref = &constant_pool->constants[context->index].interface_method_ref;
     struct Method *resolved_method = resolvedInterfaceMethod(interface_method_ref);
-    if (Method_isStatic(resolved_method) || Method_isPrivate(resolved_method)) {
+    if (isStatic(resolved_method->access_flags) || isPrivate(resolved_method->access_flags)) {
         printf("java.lang.IncompatibleClassChangeError");
     }
 
@@ -1376,11 +1376,11 @@ void invokeinterface_exe(union Context *context, struct Frame *frame) {
 
     struct Method *invoke_method = lookupMethodInClass(ref->_class, interface_method_ref->name,
                                                        interface_method_ref->descriptor);
-    if (invoke_method == NULL || Method_isAbstract(invoke_method)) {
+    if (invoke_method == NULL || isAbstract(invoke_method->access_flags)) {
         printf("java.lang.AbstractMethodError");
     }
 
-    if (!Method_isPublic(invoke_method)) {
+    if (!isPublic(invoke_method->access_flags)) {
         printf("java.lang.IllegalAccessError");
     }
 

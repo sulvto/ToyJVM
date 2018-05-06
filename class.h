@@ -8,6 +8,7 @@
 #include "type.h"
 #include "rtda.h"
 #include "classreader.h"
+#include "map.h"
 
 struct Field {
     u2      access_flags;
@@ -61,7 +62,8 @@ struct Class {
 };
 
 struct ClassLoader {
-    // map
+    // Map_T<char *, Class>
+    Map_T class_map;
 };
 
 struct ClassRef {
@@ -104,7 +106,7 @@ union Constant {
     struct InterfaceMethodRef   *interface_method_ref;
 };
 
-struct Class *loadClass(const struct ClassLoader *loader, const char *name);
+struct Class *ClassLoader_loadClass(struct ClassLoader *loader, const char *name);
 
 void initClass(struct Thread *, struct Class*);
 
@@ -112,21 +114,9 @@ struct Object *newObject(struct Class *_class);
 
 int Object_isInterfaceOf(struct Object *_this, struct Class *_class);
 
-int Class_isInterface(struct Class *_this);
-
-int Class_isAbstract(struct Class *_this);
-
 int Class_isSuperClassOf(struct Class *_this, struct Class *_class);
 
-int Class_isSuper(struct Class *_this);
-
 int Class_isImplements(struct Class *_this, struct Class *_class);
-
-int Method_isStatic(struct Method *_this);
-
-int Method_isPrivate(struct Method *_this);
-
-int Method_isAbstract(struct Method *_this);
 
 
 struct Method *resolvedInterfaceMethod(struct InterfaceMethodRef *interface_method_ref);
@@ -139,6 +129,7 @@ struct Method *lookupMethodInClass(struct Class *_class, char *name, char *descr
 
 
 
+
 #define resolvedClass(ref, result)  \
     if (ref->_class == NULL) {      \
         resolveClassRef(ref);       \
@@ -148,7 +139,7 @@ struct Method *lookupMethodInClass(struct Class *_class, char *name, char *descr
 
 #define resolveClassRef(ref)                                    \
     struct Class *d = ref->constant_pool->_class;               \
-    struct Class *c = loadClass(d->loader, ref->class_name);    \
+    struct Class *c = ClassLoader_loadClass(d->loader, ref->class_name);    \
     if (isAccessible(c, d) == 0) {                              \
         printf("java.lang.IllegalAccessError");                 \
     }                                                           \

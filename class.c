@@ -2,11 +2,12 @@
 // Created by sulvto on 18-5-1.
 //
 
+#include <stdlib.h>
 #include "class.h"
 #include "rtda.h"
 #include "classreader.h"
 #include "flags.h"
-#include <stdlib.h>
+#include "map.h"
 
 struct Field *lookupField(struct Class *_class, char *name, char *descriptor);
 
@@ -15,6 +16,67 @@ struct Method *lookupMethodInInterfaces(struct Class **interfaces, u2 count, cha
 struct Method *lookupMethod(struct Class *_class, char *name, char *descriptor);
 
 struct Method *lookupInterfaceMethod(struct Class *_class, char *name, char *descriptor);
+
+struct Class *ClassLoader_defineClass(struct ClassLoader *loader, struct s_class_data *class_data);
+
+struct Class *ClassLoader_loadNonArrayClass(struct ClassLoader *loader, const char *name);
+
+
+
+int isPublic      (u2 access_flags) {
+    return ACC_PUBLIC & access_flags == 0;
+}
+int isPrivate     (u2 access_flags) {
+    return ACC_PRIVATE & access_flags == 0;
+}
+int isProtected   (u2 access_flags) {
+    return ACC_PROTECTED & access_flags == 0;
+}
+int isStatic      (u2 access_flags) {
+    return ACC_STATIC & access_flags == 0;
+}
+int isFinal       (u2 access_flags) {
+    return ACC_FINAL & access_flags == 0;
+}
+int isSuper       (u2 access_flags) {
+    return ACC_SUPER & access_flags == 0;
+}
+int isSynchronized   (u2 access_flags) {
+    return ACC_SYNCHRONIZED & access_flags == 0;
+}
+int isVolatile    (u2 access_flags) {
+    return ACC_VOLATILE & access_flags == 0;
+}
+int isBridge      (u2 access_flags) {
+    return ACC_BRIDGE & access_flags == 0;
+}
+int isTransient   (u2 access_flags) {
+    return ACC_TRANSIENT & access_flags == 0;
+}
+int isVarargs     (u2 access_flags) {
+    return ACC_VARARGS & access_flags == 0;
+}
+int isNative      (u2 access_flags) {
+    return ACC_NATIVE & access_flags == 0;
+}
+int isInterface   (u2 access_flags) {
+    return ACC_INTERFACE & access_flags == 0;
+}
+int isAbstract    (u2 access_flags) {
+    return ACC_ABSTRACT & access_flags == 0;
+}
+int isStrict      (u2 access_flags) {
+    return ACC_STRICT & access_flags == 0;
+}
+int isSynthetic   (u2 access_flags) {
+    return ACC_SYNTHETIC & access_flags == 0;
+}
+int isAnnotation  (u2 access_flags) {
+    return ACC_ANNOTATION & access_flags == 0;
+}
+int isEnum        (u2 access_flags) {
+    return ACC_ENUM & access_flags == 0;
+}
 
 
 void verify(struct Class *_class) {
@@ -83,32 +145,30 @@ void initStaticFinalVar(struct Class *_class, struct Field *field) {
     struct Slots *slots = _class->static_vars;
     struct ConstantPool *constantPool = _class->constant_pool;
     u4 slot_id = field->slot_id;
-    if (field.const_value_index > 0) {
-        switch (field->descriptor) {
-            case "Z":
-            case "B":
-            case "C":
-            case "S":
-                break;
-            case "I":
-                int value = getConstent(field.const_value_index);
-                setInt(field.const_value_index, value, slots);
-                break;
-            case "J":
-                Long value = getConstent(field.const_value_index);
-                setLong(field.const_value_index, value, slots);
-                break;
-            case "F":
-                float value = getConstent(field.const_value_index);
-                setFloat(field.const_value_index, value, slots);
-                break;
-            case "D":
-                double value = getConstent(field.const_value_index);
-                setDouble(field.const_value_index, value, slots);
-            case "Ljava/lang/String":
-                // TODO
-                printf("Ljava/lang/String\n");
-                break;
+    if (field->const_value_index > 0) {
+        if (strcmp(field->descriptor, "Z") == 0) {
+        } else if (strcmp(field->descriptor, "Z") == 0) {
+        } else if (strcmp(field->descriptor, "B") == 0) {
+        } else if (strcmp(field->descriptor, "C") == 0) {
+        } else if (strcmp(field->descriptor, "S") == 0) {
+        } else if (strcmp(field->descriptor, "I") == 0) {
+            int value = getConstent(field->const_value_index);
+            setInt(field->const_value_index, value, slots);
+        } else if (strcmp(field->descriptor, "J") == 0) {
+            long value = getConstent(field->const_value_index);
+            setLong(field->const_value_index, value, slots);
+        } else if (strcmp(field->descriptor, "F") == 0) {
+            float value = getConstent(field->const_value_index);
+            setFloat(field->const_value_index, value, slots);
+        } else if (strcmp(field->descriptor, "D") == 0) {
+            double value = getConstent(field->const_value_index);
+            setDouble(field->const_value_index, value, slots);
+        } else if (strcmp(field->descriptor, "Ljava/lang/String") == 0) {
+            // TODO
+            printf("Ljava/lang/String\n");
+        } else {
+            // TODO
+            printf("initStaticFinalVar else\n");
         }
     }
 }
@@ -117,84 +177,92 @@ void link(struct Class *_class) {
     verify(_class);
     prepare(_class);
 }
+struct ConstantPool *ConstantPool_free(struct ConstantPool *constant_pool) {
+    // TODO
+}
 
-struct ConstantPool newConstantPool(struct Class *_class, struct ClassFile *class_file) {
+struct ConstantPool *ConstantPool_new(struct Class *_class, struct ClassFile *class_file) {
     u2 count = class_file->constant_pool_count;
 
     struct ConstantPool *constant_pool = (struct ConstantPool *) malloc(sizeof(struct ConstantPool));;
-    constant_pool._class = _class;
-    constant_pool.size = count;
-    constant_pool.constants = (union Constant *) malloc(sizeof(union Constant) * count);
+    constant_pool->_class = _class;
+    constant_pool->size = count;
+    constant_pool->constants = (union Constant *) malloc(sizeof(union Constant) * count);
     for (int i = 0; i < count; ++i) {
         struct ConstantPoolInfo constant_pool_info = class_file->constant_pool_info[i];
         switch (constant_pool_info.tag) {
-            case CONSTANT_Class:
-                struct ClassRef class_ref;
-                class_ref.constant_pool = constant_pool;
-                class_ref._class = NULL;
-                className(class_file, class_file->constant_pool_info, class_ref.class_name);
-                constant_pool.constants[i].class_ref = class_ref;
+            case CONSTANT_Class: {
+                struct ClassRef *class_ref = (struct ClassRef *) malloc(sizeof(struct ClassRef));
+
+                class_ref->constant_pool = constant_pool;
+                class_ref->_class = NULL;
+                className(class_file, class_file->constant_pool_info, class_ref->class_name);
+                constant_pool->constants[i].class_ref = class_ref;
                 break;
-            case CONSTANT_Methodref:
-                struct MethodRef method_ref;
-                method_ref._class = NULL;
-                method_ref.method = NULL;
-                method_ref.constant_pool = constant_pool;
+            }
+            case CONSTANT_Methodref: {
+                struct MethodRef *method_ref = (struct MethodRef *) malloc(sizeof(struct MethodRef));
+                method_ref->_class = NULL;
+                method_ref->method = NULL;
+                method_ref->constant_pool = constant_pool;
                 // name and type
                 struct CONSTANT_NameAndType_info nameAndType_info = ConstantPoolInfo_getNameAndType(
                         class_file->constant_pool_info,
                         constant_pool_info.info.methodref_info.name_and_type_index);
                 ConstantPoolInfo_getUtf8String(class_file->constant_pool_info, nameAndType_info.name_index,
-                                               method_ref.name);
+                                               method_ref->name);
                 ConstantPoolInfo_getUtf8String(class_file->constant_pool_info, nameAndType_info.descriptor_index,
-                                               method_ref.descriptor);
+                                               method_ref->descriptor);
 
-                className(class_file->this_class, class_file->constant_pool_info, &method_ref.class_name);
-                constant_pool.constants[i].method_ref = method_ref;
+                className(class_file->this_class, class_file->constant_pool_info, method_ref->class_name);
+                constant_pool->constants[i].method_ref = method_ref;
                 break;
-            case CONSTANT_Fieldref:
-                struct FieldRef field_ref;
-                field_ref._class = NULL;
-                field_ref.field = NULL;
-                field_ref.constant_pool = constant_pool;
+            }
+            case CONSTANT_Fieldref: {
+                struct FieldRef *field_ref = (struct FieldRef *) malloc(sizeof(struct FieldRef));
+                field_ref->_class = NULL;
+                field_ref->field = NULL;
+                field_ref->constant_pool = constant_pool;
                 // name and type
                 struct CONSTANT_NameAndType_info nameAndType_info = ConstantPoolInfo_getNameAndType(
                         class_file->constant_pool_info,
                         constant_pool_info.info.fieldref_info.name_and_type_index);
                 ConstantPoolInfo_getUtf8String(class_file->constant_pool_info, nameAndType_info.name_index,
-                                               field_ref.name);
+                                               field_ref->name);
                 ConstantPoolInfo_getUtf8String(class_file->constant_pool_info, nameAndType_info.descriptor_index,
-                                               field_ref.descriptor);
+                                               field_ref->descriptor);
 
-                className(class_file->this_class, class_file->constant_pool_info, &field_ref.class_name);
+                className(class_file->this_class, class_file->constant_pool_info, field_ref->class_name);
 
-                constant_pool.constants[i].field_ref = field_ref;
+                constant_pool->constants[i].field_ref = field_ref;
                 break;
-            case CONSTANT_InterfaceMethodref_info:
+            }
+            case CONSTANT_InterfaceMethodref: {
                 // TODO
-                struct InterfaceMethodRef interface_method_ref;
-                interface_method_ref._class = NULL;
-                interface_method_ref.method = NULL;
-                interface_method_ref.constant_pool = constant_pool;
+                struct InterfaceMethodRef *interface_method_ref = (struct InterfaceMethodRef *) malloc(sizeof(struct InterfaceMethodRef));;
+                interface_method_ref->_class = NULL;
+                interface_method_ref->method = NULL;
+                interface_method_ref->constant_pool = constant_pool;
                 // name and type
                 struct CONSTANT_NameAndType_info nameAndType_info = ConstantPoolInfo_getNameAndType(
                         class_file->constant_pool_info,
                         constant_pool_info.info.interfaceMethodref_info.name_and_type_index);
                 ConstantPoolInfo_getUtf8String(class_file->constant_pool_info, nameAndType_info.name_index,
-                                               interface_method_ref.name);
+                                               interface_method_ref->name);
                 ConstantPoolInfo_getUtf8String(class_file->constant_pool_info, nameAndType_info.descriptor_index,
-                                               interface_method_ref.descriptor);
+                                               interface_method_ref->descriptor);
 
-                className(class_file->this_class, class_file->constant_pool_info, &interface_method_ref.class_name);
+                className(class_file->this_class, class_file->constant_pool_info, interface_method_ref->class_name);
 
-                constant_pool.constants[i].interface_method_ref = interface_method_ref;
+                constant_pool->constants[i].interface_method_ref = interface_method_ref;
                 break;
+            }
             default:
                 // TODO
                 break;
         }
     }
-
+    return constant_pool;
 }
 
 struct Field *newFields(struct Class *_class, struct ClassFile *class_file) {
@@ -223,22 +291,25 @@ struct Class *newClass(struct ClassFile *class_file) {
     _class->access_flags = class_file->access_flags;
 
     className(class_file->this_class, class_file->constant_pool_info, &_class->name);
-    className(class_file->super_class, class_file->constant_pool_info, &_class.super_class_name);
+    className(class_file->super_class, class_file->constant_pool_info, &_class->super_class_name);
     // interfaces_count
-    _class.constant_pool_count = class_file->constant_pool_count;
-    _class.constant_pool = newConstantPool(_class, class_file);
-    _class.fields = newFields(_class, class_file);
-    _class.methods = newFields(_class, class_file);
+    _class->constant_pool_count = class_file->constant_pool_count;
+    _class->constant_pool = ConstantPool_new(_class, class_file);
+    _class->fields = newFields(_class, class_file);
+    _class->methods = newFields(_class, class_file);
 }
 
-struct Class *loadClass(const struct ClassLoader *loader, const char *name) {
-    // map find
-    return loadNonArrayClass(name);
+struct Class *ClassLoader_loadClass(struct ClassLoader *loader, const char *name) {
+    struct Class *_class = (struct Class *) Map_get(loader->class_map, name);
+    if (_class != NULL) {
+        return _class;
+    }
+    return ClassLoader_loadNonArrayClass(loader, name);
 }
 
-struct Class *loadNonArrayClass(const char *name) {
+struct Class *ClassLoader_loadNonArrayClass(struct ClassLoader *loader, const char *name) {
     struct s_class_data class_data = readClassFile(name);
-    struct Class *_class = defineClass(class_data);
+    struct Class *_class = ClassLoader_defineClass(loader, &class_data);
     link(_class);
     printf("[Loaded %s from %s]\n", name, "from");
     return _class;
@@ -246,7 +317,7 @@ struct Class *loadNonArrayClass(const char *name) {
 
 void resolveSuperClass(struct Class *_class) {
     if (strcmp(_class->name, "java/lang/Object") != 0) {
-        _class->super_class = loadClass(_class->super_class_name);
+        _class->super_class = ClassLoader_loadClass(_class->loader, _class->super_class_name);
     } else {
         _class->super_class = NULL;
     }
@@ -256,19 +327,19 @@ void resolveInterfaces(struct Class *_class) {
 
 }
 
-struct Class *defineClass(struct s_class_data *class_data) {
-    struct Class *_class = parseClass(class_data);
-    resolveSuperClass(_class);
-    resolveInterfaces(_class);
-    // map to
-    return readClassFile(_class->name);
-}
-
 struct Class *parseClass(struct s_class_data *class_data) {
     struct ClassFile class_file = parseClassContent(class_data);
     return newClass(&class_file);
 }
 
+struct Class *ClassLoader_defineClass(struct ClassLoader *loader, struct s_class_data *class_data) {
+    struct Class *_class = parseClass(class_data);
+    _class->loader = loader;
+    resolveSuperClass(_class);
+    resolveInterfaces(_class);
+    Map_put(loader->class_map, _class->name, _class);
+    return _class;
+}
 
 struct Method *resolvedInterfaceMethod(struct InterfaceMethodRef *interface_method_ref) {
     if (interface_method_ref->method == NULL) {
@@ -453,7 +524,7 @@ int Field_isAccessibleTo(struct Field *_this, struct Class *_other) {
                strcmp(packageName(_this->_class), packageName(_other)) == 0;
     }
 
-    if (!isPrivate()) {
+    if (!isPrivate(_this)) {
         return strcmp(packageName(_this->_class), packageName(_other)) == 0;
     }
 

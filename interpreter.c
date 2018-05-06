@@ -10,8 +10,7 @@
 #include "instruction.h"
 #include <stddef.h>
 
-void invokeMethod(struct Frame *invoker_frame, struct Method *method)
-{
+void invokeMethod(struct Frame *invoker_frame, struct Method *method) {
     struct Thread *thread = invoker_frame->thread;
     struct Frame *new_frame = newFrame(thread, method);
     pushFrame(new_frame, thread);
@@ -24,9 +23,7 @@ void invokeMethod(struct Frame *invoker_frame, struct Method *method)
 }
 
 
-
-void loop(struct Thread *thread)
-{
+void loop(struct Thread *thread) {
 
     struct Bytecode *bytecode_data = (struct Bytecode *) malloc(sizeof(struct Bytecode));
 
@@ -61,8 +58,7 @@ void loop(struct Thread *thread)
     }
 }
 
-void interpret(struct Method *main_method)
-{
+void interpret(struct Method *main_method) {
     struct Thread *thread = newThread();
     struct Frame *frame = newFrame(thread, main_method);
     pushFrame(frame, thread);

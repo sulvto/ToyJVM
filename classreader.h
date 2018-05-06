@@ -121,7 +121,7 @@ struct CONSTANT_MethodType_info {
     u2 descriptor_index;
 };
 
-struct CONSTANT_InvokeDynamic_info{
+struct CONSTANT_InvokeDynamic_info {
     u2 bootstrap_method_attr_index;
     u2 name_and_type_index;
 };
@@ -202,7 +202,8 @@ void ConstantPoolInfo_getUtf8String(const struct ConstantPoolInfo *constant_pool
 struct CONSTANT_NameAndType_info ConstantPoolInfo_getNameAndType(const struct ConstantPoolInfo *constant_pool_info,
                                                                  const u2 index);
 
-struct AttributeInfo *constantValueAttribute(const struct MemberInfo *member, struct ConstantPoolInfo *constant_pool_info);
+struct AttributeInfo *constantValueAttribute(const struct MemberInfo *member,
+                                             struct ConstantPoolInfo *constant_pool_info);
 
 
 #endif //TOYJVM_CLASSREADER_H

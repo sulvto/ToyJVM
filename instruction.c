@@ -2,13 +2,13 @@
 // Created by sulvto on 18-4-30.
 //
 
+#include <stdlib.h>
+#include <math.h>
 #include "rtda.h"
 #include "bytecode.h"
 #include "instruction.h"
 #include "interpreter.h"
 #include "class.h"
-#include <stdlib.h>
-#include <math.h>
 
 void nop_fetchOp(union Context *context, struct Bytecode *data) {
     // noting to do
@@ -1238,9 +1238,9 @@ void invokevirtual_exe(union Context *context, struct Frame *frame) {
         }
     }
 
-    if (isProtdcted(resolved_method->access_flags) &&
+    if (isProtected(resolved_method->access_flags) &&
         Class_isSuperClassOf(resolved_method->_class, current_class) &&
-        strcmp(packageName(resolved_method->_class), packageName(current_class)) != 0 &&
+        strcmp(Class_packageName(resolved_method->_class), Class_packageName(current_class)) != 0 &&
         ref->_class != current_class &&
         !Class_isSuperClassOf(ref->_class, current_class)
             ) {
@@ -1282,9 +1282,9 @@ void invokespecial_exe(union Context *context, struct Frame *frame) {
         printf("java.lang.NullPointerException");
     }
 
-    if (isProtdcted(resolved_method->access_flags) &&
+    if (isProtected(resolved_method->access_flags) &&
         Class_isSuperClassOf(resolved_method->_class, current_class) &&
-        strcmp(packageName(resolved_method->_class), packageName(current_class)) != 0 &&
+        strcmp(Class_packageName(resolved_method->_class), Class_packageName(current_class)) != 0 &&
         ref->_class != current_class &&
         !Class_isSuperClassOf(ref->_class, current_class)
             ) {
@@ -1403,7 +1403,7 @@ void new_exe(union Context *context, struct Frame *frame) {
         return;
     }
 
-    if (Class_isInterface(_class) || Class_isAbstract(_class)) {
+    if (isInterface(_class->access_flags) || isAbstract(_class->access_flags)) {
         printf("java.lang.InstantiationError");
     }
 
@@ -1444,7 +1444,7 @@ void instanceof_exe(union Context *context, struct Frame *frame) {
 
     resolveClassRef(class_ref);
 
-    if (Field_isInterfaceOf(ref, class_ref->_class)) {
+    if (Object_isInterfaceOf(ref, class_ref->_class)) {
         pushInt(1, stack);
     } else {
         pushInt(0, stack);

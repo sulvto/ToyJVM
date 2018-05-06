@@ -32,12 +32,6 @@ struct Method {
     u4      arg_count;
 };
 
-struct ConstantPool {
-    struct Class    *_class;
-    u2              size;
-    union Constant *constants;
-};
-
 struct Class {
     u2                      access_flags;
     char                    *name;
@@ -100,11 +94,26 @@ struct InterfaceMethodRef {
 };
 
 union Constant {
+    int                         int_value;
+    long                        long_value;
+    float                       float_value;
+    double                      double_value;
+    char                        *string;
     struct MethodRef            *method_ref;
     struct ClassRef             *class_ref;
     struct FieldRef             *field_ref;
     struct InterfaceMethodRef   *interface_method_ref;
 };
+
+struct ConstantPool {
+    struct Class    *_class;
+    u2              size;
+    union Constant *constants;
+};
+
+struct ClassLoader *ClassLoader_new();
+
+struct ClassLoader *ClassLoader_free(struct ClassLoader *);
 
 struct Class *ClassLoader_loadClass(struct ClassLoader *loader, const char *name);
 
@@ -112,11 +121,14 @@ void initClass(struct Thread *, struct Class*);
 
 struct Object *newObject(struct Class *_class);
 
-int Object_isInterfaceOf(struct Object *_this, struct Class *_class);
+int Object_isInterfaceOf(struct Object *_this, struct Class *_other);
 
-int Class_isSuperClassOf(struct Class *_this, struct Class *_class);
+int Class_isSuperClassOf(struct Class *_this, struct Class *_other);
 
-int Class_isImplements(struct Class *_this, struct Class *_class);
+int Class_isImplements(struct Class *_this, struct Class *_other);
+
+char *Class_packageName(struct Class *_this);
+
 
 
 struct Method *resolvedInterfaceMethod(struct InterfaceMethodRef *interface_method_ref);
@@ -140,7 +152,7 @@ struct Method *lookupMethodInClass(struct Class *_class, char *name, char *descr
 #define resolveClassRef(ref)                                    \
     struct Class *d = ref->constant_pool->_class;               \
     struct Class *c = ClassLoader_loadClass(d->loader, ref->class_name);    \
-    if (isAccessible(c, d) == 0) {                              \
+    if (Class_isAccessibleTo(c, d) == 0) {                              \
         printf("java.lang.IllegalAccessError");                 \
     }                                                           \
     ref->_class = c;                                            \

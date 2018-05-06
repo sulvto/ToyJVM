@@ -3,6 +3,7 @@
 //
 
 #include <stdlib.h>
+#include <string.h>
 #include "class.h"
 #include "rtda.h"
 #include "classreader.h"
@@ -20,6 +21,14 @@ struct Method *lookupInterfaceMethod(struct Class *_class, char *name, char *des
 struct Class *ClassLoader_defineClass(struct ClassLoader *loader, struct s_class_data *class_data);
 
 struct Class *ClassLoader_loadNonArrayClass(struct ClassLoader *loader, const char *name);
+
+int Class_isAccessibleTo(struct Class *_this, struct Class *_other);
+
+int Method_isAccessibleTo(struct Method *_this, struct Class *_other);
+
+int Field_isAccessibleTo(struct Field *_this, struct Class *_other);
+
+
 
 
 
@@ -152,19 +161,20 @@ void initStaticFinalVar(struct Class *_class, struct Field *field) {
         } else if (strcmp(field->descriptor, "C") == 0) {
         } else if (strcmp(field->descriptor, "S") == 0) {
         } else if (strcmp(field->descriptor, "I") == 0) {
-            int value = getConstent(field->const_value_index);
+            int value = constantPool->constants[field->const_value_index].int_value;
             setInt(field->const_value_index, value, slots);
         } else if (strcmp(field->descriptor, "J") == 0) {
-            long value = getConstent(field->const_value_index);
+            long value = constantPool->constants[field->const_value_index].long_value;
             setLong(field->const_value_index, value, slots);
         } else if (strcmp(field->descriptor, "F") == 0) {
-            float value = getConstent(field->const_value_index);
+            float value = constantPool->constants[field->const_value_index].float_value;
             setFloat(field->const_value_index, value, slots);
         } else if (strcmp(field->descriptor, "D") == 0) {
-            double value = getConstent(field->const_value_index);
+            double value = constantPool->constants[field->const_value_index].double_value;
             setDouble(field->const_value_index, value, slots);
         } else if (strcmp(field->descriptor, "Ljava/lang/String") == 0) {
-            // TODO
+            char *string = constantPool->constants[field->const_value_index].string;
+//            set
             printf("Ljava/lang/String\n");
         } else {
             // TODO
@@ -296,7 +306,18 @@ struct Class *newClass(struct ClassFile *class_file) {
     _class->constant_pool_count = class_file->constant_pool_count;
     _class->constant_pool = ConstantPool_new(_class, class_file);
     _class->fields = newFields(_class, class_file);
-    _class->methods = newFields(_class, class_file);
+    _class->methods = newMethods(_class, class_file);
+}
+
+
+struct ClassLoader *ClassLoader_new() {
+    struct ClassLoader *loader = (struct ClassLoader *) malloc(sizeof(struct ClassLoader));
+    loader->class_map = Map_new(1000, NULL, NULL);
+    return loader;
+}
+
+struct ClassLoader *ClassLoader_free(struct ClassLoader *_this) {
+
 }
 
 struct Class *ClassLoader_loadClass(struct ClassLoader *loader, const char *name) {
@@ -354,7 +375,7 @@ void resolveInterfaceMethodRef(struct InterfaceMethodRef *interface_method_ref) 
     struct Class *c;
     resolvedClass(interface_method_ref, c);
 
-    if (!Class_isInterface(c)) {
+    if (!isInterface(c->access_flags)) {
         printf("java.lang.IncompatibleClassChangeError");
     }
 
@@ -364,7 +385,7 @@ void resolveInterfaceMethodRef(struct InterfaceMethodRef *interface_method_ref) 
         printf("java.lang.NoSuchMethodError");
     }
 
-    if (!Method_isAccessibleTo(method)) {
+    if (!Method_isAccessibleTo(method, d)) {
         printf("java.lang.IllegalAccessError");
     }
 
@@ -394,7 +415,7 @@ void resolveMethodRef(struct MethodRef *method_ref) {
     struct Class *c;
     resolvedClass(method_ref, c);
 
-    if (Class_isInterface(c)) {
+    if (isInterface(c->access_flags)) {
         printf("java.lang.IncompatibleClassChangeError");
     }
 
@@ -404,7 +425,7 @@ void resolveMethodRef(struct MethodRef *method_ref) {
         printf("java.lang.NoSuchMethodError");
     }
 
-    if (!Method_isAccessibleTo(method)) {
+    if (!Method_isAccessibleTo(method, d)) {
         printf("java.lang.IllegalAccessError");
     }
 
@@ -470,7 +491,7 @@ void resolveFieldRef(struct FieldRef *field_ref) {
         printf("java.lang.NoSuchFieldError");
     }
 
-    if (!Field_isAccessibleTo(field)) {
+    if (!Field_isAccessibleTo(field, d)) {
         printf("java.lang.IllegalAccessError");
     }
 
@@ -498,34 +519,119 @@ struct Field *lookupField(struct Class *_class, char *name, char *descriptor) {
     return NULL;
 }
 
+
+char *Class_packageName(struct Class *_this) {
+    // java/lang/Object
+    char *c = strrchr(_this->name, '/');
+    if (c != NULL) {
+        // /Object
+        c++;
+        // Object
+        return c;
+    }
+    return NULL;
+}
+
 int Class_isAccessibleTo(struct Class *_this, struct Class *_other) {
-    return isPublic(_this) || strcmp(packageName(_this), packageName(_other)) == 0;
+    return isPublic(_this->access_flags) || strcmp(Class_packageName(_this), Class_packageName(_other)) == 0;
 }
 
-int Class_isInterface(struct Class *_this) {
+int Class_isSubInterfaceOf(struct Class *_this, struct Class *_other) {
+    for (int i = 0; i < _this->interface_count; ++i) {
+        struct Class *iface = _this->interface_class[i];
+        if (iface == _other || Class_isSubInterfaceOf(iface, _other)) {
+            return 1;
+        }
+    }
 
+    return 0;
 }
 
-int Class_isAbstract(struct Class *_this) {
-
+int Class_isImplements(struct Class *_this, struct Class *_other) {
+    struct Class *c = _this;
+    for (c = _this; c != NULL ; c = c->super_class) {
+        for (int i = 0; i < c->interface_count; ++i) {
+            struct Class *iface = c->interface_class[i];
+            if (_other == iface && Class_isSubInterfaceOf(_other, iface)) {
+                return 1;
+            }
+        }
+    }
+    return 0;
 }
 
-int Object_isInterfaceOf(struct Object *_this, struct Class *_class) {
-//    _this->_class
+int Class_isSubClassOf(struct Class *_this, struct Class *_other) {
+    struct Class *c = _this->super_class;
+
+    while (c != NULL) {
+        if (c == _other) {
+            return 1;
+        } else {
+            c = c->super_class;
+        }
+    }
+
+    return 0;
 }
 
-int Field_isAccessibleTo(struct Field *_this, struct Class *_other) {
-    if (isPublic(_this)) {
+int Class_isSuperClassOf(struct Class *_this, struct Class *_other) {
+    return Class_isSubClassOf(_other, _this);
+}
+
+
+int Object_isInterfaceOf(struct Object *_this, struct Class *_other) {
+    struct Class *s = _this->_class;
+    struct Class *t = _other;
+
+    if (s == t) {
         return 1;
     }
 
-    if (isProtected(_this)) {
-        return _this->_class == _other || isSubClassOf(_this->_class, _other) ||
-               strcmp(packageName(_this->_class), packageName(_other)) == 0;
+    if (isInterface(s)) {
+        if (isInterface(t)) {
+            return s == t || Class_isSubInterfaceOf(s, t);
+        } else {
+            return strcmp(t->name, "java/lang/Object") == 0;
+        }
+    } else {
+        if (isInterface(t)) {
+            return Class_isImplements(s, t);
+        } else {
+            return s == t || Class_isSubClassOf(s, t);
+        }
+    }
+}
+
+int Field_isAccessibleTo(struct Field *_this, struct Class *_other) {
+    if (isPublic(_this->access_flags)) {
+        return 1;
     }
 
-    if (!isPrivate(_this)) {
-        return strcmp(packageName(_this->_class), packageName(_other)) == 0;
+    if (isProtected(_this->access_flags)) {
+        return _this->_class == _other || Class_isSubClassOf(_this->_class, _other) ||
+               strcmp(Class_packageName(_this->_class), Class_packageName(_other)) == 0;
+    }
+
+    if (!isPrivate(_this->access_flags)) {
+        return strcmp(Class_packageName(_this->_class), Class_packageName(_other)) == 0;
+    }
+
+    return _this->_class == _other;
+}
+
+
+int Method_isAccessibleTo(struct Method *_this, struct Class *_other) {
+    if (isPublic(_this->access_flags)) {
+        return 1;
+    }
+
+    if (isProtected(_this->access_flags)) {
+        return _this->_class == _other || Class_isSubClassOf(_this->_class, _other) ||
+               strcmp(Class_packageName(_this->_class), Class_packageName(_other)) == 0;
+    }
+
+    if (!isPrivate(_this->access_flags)) {
+        return strcmp(Class_packageName(_this->_class), Class_packageName(_other)) == 0;
     }
 
     return _this->_class == _other;

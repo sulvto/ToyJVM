@@ -189,20 +189,23 @@ struct ClassFile parseClassContent(struct s_class_data *class_data);
 
 void printClassInfo(struct ClassFile *);
 
-void memberName(const struct MemberInfo *, const struct ConstantPoolInfo *, char *);
+char *memberName(const struct MemberInfo *, const struct ConstantPoolInfo *);
 
-void descriptor(const struct MemberInfo *, const struct ConstantPoolInfo *, char *);
+char *descriptor(const struct MemberInfo *, const struct ConstantPoolInfo *);
 
-void attributeName(const u2, const struct ConstantPoolInfo *, char *);
+char *attributeName(const u2, const struct ConstantPoolInfo *);
 
-void className(const u2 name_index, const struct ConstantPoolInfo *constant_pool_info, char *name);
+char *className(const u2 class_index, const struct ConstantPoolInfo *constant_pool_info);
 
-void ConstantPoolInfo_getUtf8String(const struct ConstantPoolInfo *constant_pool_info, const u2 index, char *name);
+char *ConstantPoolInfo_getUtf8String(const struct ConstantPoolInfo *constant_pool_info, const u2 index);
 
 struct CONSTANT_NameAndType_info ConstantPoolInfo_getNameAndType(const struct ConstantPoolInfo *constant_pool_info,
                                                                  const u2 index);
 
 struct AttributeInfo *constantValueAttribute(const struct MemberInfo *member,
+                                             struct ConstantPoolInfo *constant_pool_info);
+
+struct AttributeInfo *codeAttribute(const struct MemberInfo *member,
                                              struct ConstantPoolInfo *constant_pool_info);
 
 

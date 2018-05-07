@@ -189,8 +189,7 @@ struct AttributeInfo readAttributes(struct s_class_data *class_data,
     attributeInfo.attribute_name_index = attribute_name_index;
     attributeInfo.attribute_length = attribute_length;
 
-    char attrName[1024];
-    attributeName(attribute_name_index, constant_pool_info, &attrName);
+    char *attrName = attributeName(attribute_name_index, constant_pool_info);
 
     if (strcmp(ATTRIBUTE_ConstantValue, attrName) == 0) {
         struct ConstantValue_attributeInfo constantValue;
@@ -227,7 +226,7 @@ struct AttributeInfo readAttributes(struct s_class_data *class_data,
         }
         attributeInfo.info.unparsed = unparsed;
     }
-
+    free(attrName);
     return attributeInfo;
 }
 
@@ -308,45 +307,51 @@ struct ClassFile parseClassContent(struct s_class_data *class_data) {
     return class_file;
 }
 
-void utf8String(const struct CONSTANT_Utf8_info *utf8_info, char *c) {
+char *utf8String(const struct CONSTANT_Utf8_info *utf8_info) {
     u2 length = utf8_info->length;
 
+    char *result = (char *) malloc(sizeof(length));
     for (int i = 0; i < length; ++i) {
         u1 byte = utf8_info->bytes[i];
         if (byte < 127) {
-            c[i] = toascii(byte);
+            result[i] = toascii(byte);
         } else {
             // TODO
-            c[i] = '~';
+            result[i] = '~';
         }
     }
-
-    c[length] = '\0';
+    result[length] = '\0';
+    return result;
 }
 
 struct CONSTANT_Utf8_info *utf8Info(const u2 index, const struct ConstantPoolInfo *constant_pool_info) {
     return &constant_pool_info[index - 1].info.utf8_info;
 }
 
-void className(const u2 name_index, const struct ConstantPoolInfo *constant_pool_info, char *name) {
-    ConstantPoolInfo_getUtf8String(constant_pool_info, name_index, name);
+struct CONSTANT_Class_info *classInfo(const u2 index, const struct ConstantPoolInfo *constant_pool_info) {
+    return &constant_pool_info[index - 1].info.class_info;
 }
 
-void memberName(const struct MemberInfo *member, const struct ConstantPoolInfo *constant_pool_info, char *name) {
-    ConstantPoolInfo_getUtf8String(constant_pool_info, member->name_index, name);
+char *className(const u2 class_index, const struct ConstantPoolInfo *constant_pool_info) {
+    struct CONSTANT_Class_info *class_info = classInfo(class_index, constant_pool_info);
+    return ConstantPoolInfo_getUtf8String(constant_pool_info, class_info->name_index);
 }
 
-void descriptor(const struct MemberInfo *member, const struct ConstantPoolInfo *constant_pool_info, char *desc) {
-    ConstantPoolInfo_getUtf8String(constant_pool_info, member->descriptor_index, desc);
+char *memberName(const struct MemberInfo *member, const struct ConstantPoolInfo *constant_pool_info) {
+    return ConstantPoolInfo_getUtf8String(constant_pool_info, member->name_index);
 }
 
-void attributeName(const u2 attribute_name_index, const struct ConstantPoolInfo *constant_pool_info, char *name) {
-    ConstantPoolInfo_getUtf8String(constant_pool_info, attribute_name_index, name);
+char *descriptor(const struct MemberInfo *member, const struct ConstantPoolInfo *constant_pool_info) {
+    return ConstantPoolInfo_getUtf8String(constant_pool_info, member->descriptor_index);
 }
 
-void ConstantPoolInfo_getUtf8String(const struct ConstantPoolInfo *constant_pool_info, const u2 index, char *name) {
+char *attributeName(const u2 attribute_name_index, const struct ConstantPoolInfo *constant_pool_info) {
+    return ConstantPoolInfo_getUtf8String(constant_pool_info, attribute_name_index);
+}
+
+char *ConstantPoolInfo_getUtf8String(const struct ConstantPoolInfo *constant_pool_info, const u2 index) {
     struct CONSTANT_Utf8_info *utf8_info = utf8Info(index, constant_pool_info);
-    utf8String(utf8_info, name);
+    return utf8String(utf8_info);
 }
 
 
@@ -355,14 +360,28 @@ struct CONSTANT_NameAndType_info ConstantPoolInfo_getNameAndType(const struct Co
     return constant_pool_info[index - 1].info.nameAndType_info;
 }
 
+struct AttributeInfo *codeAttribute(const struct MemberInfo *member,
+                                             struct ConstantPoolInfo *constant_pool_info) {
+    for (int i = 0; i < member->attributes_count; ++i) {
+        char *name = attributeName(member->attributes[i].attribute_name_index, constant_pool_info);
+
+        if (strcmp(ATTRIBUTE_Code, name) == 0) {
+            return &member->attributes[i];
+        }
+        free(name);
+    }
+
+    return NULL;
+}
+
 struct AttributeInfo *constantValueAttribute(const struct MemberInfo *member,
                                              struct ConstantPoolInfo *constant_pool_info) {
     for (int i = 0; i < member->attributes_count; ++i) {
-        char name[512];
-        attributeName(member->attributes[i].attribute_name_index, constant_pool_info, name);
+        char *name = attributeName(member->attributes[i].attribute_name_index, constant_pool_info);
         if (strcmp(ATTRIBUTE_ConstantValue, name) == 0) {
             return &member->attributes[i];
         }
+        free(name);
     }
 
     return NULL;

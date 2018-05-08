@@ -2,6 +2,8 @@
 // Created by sulvto on 18-4-24.
 //
 #include <stdio.h>
+#include <dirent.h>
+#include <zlib.h>
 #include "type.h"
 #include "classreader.h"
 
@@ -268,21 +270,75 @@ void readMethods(const struct s_class_data *class_data, struct ClassFile *class_
 
 }
 
+static void readJAR(char *path) {
+    printf("jar %s\n", path);
 
-struct s_class_data readClassFile(const char *className) {
+}
+
+
+static int readRootClasspath(const char *class_name, struct s_class_data *class_data) {
+    const char *jar_path = "/usr/java/jre1.8.0_172-amd64/lib";
+
+    DIR *dp;
+    struct dirent *dirp;
+
+    if ((dp = opendir(jar_path)) == NULL) {
+        return 0;
+    }
+
+    while ((dirp = readdir(dp)) != NULL) {
+        if (strcmp(dirp->d_name, ".") == 0 ||
+            strcmp(dirp->d_name, "..") == 0) {
+            continue;
+        }
+
+        if (strstr(dirp->d_name, ".jar") != NULL || strstr(dirp->d_name, ".JAR") != NULL) {
+            readJAR(dirp->d_name);
+        }
+    }
+    printf("closedir \n");
+
+    closedir(dp);
+    return 0;
+}
+
+static int readExtClasspath(const char *class_name, struct s_class_data *class_data) {
+    const char *jar_path = "/usr/java/jre1.8.0_172-amd64/lib/ext";
+
+    return 0;
+}
+
+static int readUserClasspath(const char *class_name, struct s_class_data *class_data) {
     FILE *f;
-    f = fopen(className, "r");
-    struct s_class_data class_data;
+    f = fopen(class_name, "r");
     int i = 0;
     u1 buf;
     while (fread(&buf, sizeof(u1), 1, f) != 0) {
-        class_data.data[i++] = buf;
+        class_data->data[i++] = buf;
     }
 
-    class_data.index = 0;
-    class_data.length = i;
+    class_data->index = 0;
+    class_data->length = i;
+    return 1;
+}
 
-    return class_data;
+struct s_class_data *readClassFile(const char *class_name) {
+    printf("readClassFile %s\n", class_name);
+    struct s_class_data *class_data = (struct s_class_data *) malloc(sizeof(struct s_class_data));
+
+    if (readRootClasspath(class_name, class_data)) {
+        return class_data;
+    }
+
+    if (readExtClasspath(class_name, class_data)) {
+        return class_data;
+    }
+
+    if (readUserClasspath(class_name, class_data)) {
+        return class_data;
+    }
+
+    return NULL;
 }
 
 struct ClassFile parseClassContent(struct s_class_data *class_data) {

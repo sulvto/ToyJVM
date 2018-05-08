@@ -177,13 +177,13 @@ struct ClassFile {
 };
 
 struct s_class_data {
-    // 1024??
+    // ???
     u1  data[1024];
     int length;
     int index;
 };
 
-struct s_class_data readClassFile(const char *);
+struct s_class_data *readClassFile(const char *);
 
 struct ClassFile parseClassContent(struct s_class_data *class_data);
 

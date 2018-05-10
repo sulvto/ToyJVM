@@ -218,6 +218,7 @@ union Context {
     int offset;
     u1 bi;
     short si;
+    unsigned int atype;
 };
 
 typedef void(*Execute)(union Context *, struct Frame *);

@@ -22,7 +22,11 @@ struct Class *ClassLoader_defineClass(struct ClassLoader *loader, struct s_class
 
 struct Class *ClassLoader_loadNonArrayClass(struct ClassLoader *loader, const char *name);
 
+struct Class *ClassLoader_loadArrayClass(struct ClassLoader *loader, const char *name);
+
 int Class_isAccessibleTo(struct Class *_this, struct Class *_other);
+
+char *getArrayClassName(char *class_name);
 
 int Method_isAccessibleTo(struct Method *_this, struct Class *_other);
 
@@ -350,12 +354,37 @@ struct Class *ClassLoader_loadClass(struct ClassLoader *loader, const char *name
     if (_class != NULL) {
         return _class;
     }
-    return ClassLoader_loadNonArrayClass(loader, name);
+
+    if (_class->name[0] == '[') {
+        return ClassLoader_loadArrayClass(loader, name);
+    } else {
+        return ClassLoader_loadNonArrayClass(loader, name);
+    }
+}
+
+struct Class *ClassLoader_loadArrayClass(struct ClassLoader *loader, const char *name) {
+    struct Class *_class = (struct Class *) malloc(sizeof(struct Class));
+    // TODO ACC_PUBLIC
+    _class->access_flags = ACC_PUBLIC;
+    _class->name = name;
+    _class->loader = loader;
+    _class->init_started = 1;
+    _class->super_class = ClassLoader_loadClass(loader, "java/lang/Object");
+    _class->interface_count = 2;
+    _class->interface_class = (struct Class *) malloc(sizeof(struct Class) * 2);
+
+    _class->interface_class[0] = ClassLoader_loadClass(loader, "java/lang/Cloneable");
+    _class->interface_class[1] = ClassLoader_loadClass(loader, "java/io/Serializable");
+
+    Map_put(loader->class_map, name, _class);
+
+    return _class;
 }
 
 struct Class *ClassLoader_loadNonArrayClass(struct ClassLoader *loader, const char *name) {
-    struct s_class_data class_data = readClassFile(name);
-    struct Class *_class = ClassLoader_defineClass(loader, &class_data);
+    struct s_class_data *class_data = readClassFile(name);
+    printf("readClassFile success\n");
+    struct Class *_class = ClassLoader_defineClass(loader, class_data);
     link(_class);
     printf("[Loaded %s from %s]\n", name, "from");
     return _class;
@@ -364,6 +393,7 @@ struct Class *ClassLoader_loadNonArrayClass(struct ClassLoader *loader, const ch
 void resolveSuperClass(struct Class *_class) {
     if (strcmp(_class->name, "java/lang/Object") != 0) {
         // FIXME load java/lang/Object
+        printf("_class->super_class_name %s\n", _class->super_class_name);
         _class->super_class = ClassLoader_loadClass(_class->loader, _class->super_class_name);
     } else {
         _class->super_class = NULL;
@@ -604,6 +634,38 @@ int Class_isSuperClassOf(struct Class *_this, struct Class *_other) {
     return Class_isSubClassOf(_other, _this);
 }
 
+struct Class *Class_arrayClass(struct Class *_this) {
+    char *array_class_name = getArrayClassName(_this->name);
+    return ClassLoader_loadClass(_this->loader, array_class_name);
+}
+
+char *getArrayClassName(char *class_name) {
+    if (class_name[0] == '[') {
+        return "[" + class_name;
+    }
+
+    if (strcmp("void", class_name) == 0) {
+        return "[V";
+    } else if (strcmp("boolean", class_name) == 0) {
+        return "[Z";
+    } else if (strcmp("byte", class_name) == 0) {
+        return "[B";
+    } else if (strcmp("char", class_name) == 0) {
+        return "[C";
+    } else if (strcmp("short", class_name) == 0) {
+        return "[S";
+    } else if (strcmp("int", class_name) == 0) {
+        return "[I";
+    } else if (strcmp("long", class_name) == 0) {
+        return "[J";
+    } else if (strcmp("float", class_name) == 0) {
+        return "[F";
+    } else if (strcmp("double", class_name) == 0) {
+        return "[D";
+    }
+
+    return "[L" + class_name + ";";
+}
 
 int Object_isInterfaceOf(struct Object *_this, struct Class *_other) {
     struct Class *s = _this->_class;

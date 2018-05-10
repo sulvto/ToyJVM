@@ -10,6 +10,23 @@
 #include "interpreter.h"
 #include "class.h"
 
+
+// array type
+#define AT_BOOLEAN  4
+#define AT_BYTE     5
+#define AT_CHAR     6
+#define AT_SHORT    7
+#define AT_INT      8
+#define AT_LONG     9
+#define AT_FLOAT    10
+#define AT_DOUBLE   11
+
+
+
+struct Class *getPrimitiveArrayClass(struct ClassLoader *loader, unsigned int atype);
+
+
+
 void nop_fetchOp(union Context *context, struct Bytecode *data) {
     // noting to do
 }
@@ -1412,16 +1429,61 @@ void new_exe(union Context *context, struct Frame *frame) {
     pushRef(ref, frame->operand_stack);
 }
 
-void newarray_exe(union Context *context, struct Frame *frame) {
+void newarray_fetchOp(union Context *context, struct Bytecode *data) {
+    context->atype = readBytecodeU2(data);
+}
 
+void newarray_exe(union Context *context, struct Frame *frame) {
+    struct OperandStack *stack = frame->operand_stack;
+    int count = popInt(stack);
+    if (count < 0) {
+        printf("java.lang.NegativeArraySizeException\n");
+    }
+
+    struct ClassLoader *loader = frame->method->_class->loader;
+    struct Class *array_class = getPrimitiveArrayClass(loader, context->atype);
+    struct Object *array = Class_newArray(array_class, count);
+    pushRef(array, stack);
+}
+
+struct Class *getPrimitiveArrayClass(struct ClassLoader *loader, unsigned int atype) {
+
+    switch (atype) {
+        case AT_BOOLEAN:
+            return ClassLoader_loadClass(loader, "[Z");
+        case AT_BYTE:
+            return ClassLoader_loadClass(loader, "[B");
+        case AT_CHAR:
+            return ClassLoader_loadClass(loader, "[C");
+        case AT_SHORT:
+            return ClassLoader_loadClass(loader, "[S");
+        case AT_INT:
+            return ClassLoader_loadClass(loader, "[I");
+        case AT_LONG:
+            return ClassLoader_loadClass(loader, "[J");
+        case AT_FLOAT:
+            return ClassLoader_loadClass(loader, "[F");
+        case AT_DOUBLE:
+            return ClassLoader_loadClass(loader, "[D");
+        default:    printf("Invalid atype!\n");
+    }
 }
 
 void anewarray_exe(union Context *context, struct Frame *frame) {
+    struct ClassRef *class_ref = frame->method->_class->constant_pool->constants[context->index].class_ref;
+    resolveClassRef(class_ref);
+    int count = popInt(frame->operand_stack);
+    if (count < 0) {
+        printf("java.lang.NegativeArraySizeException\n");
+    }
 
+    struct Class *array_class = Class_arrayClass(class_ref->_class);
+    struct Object *array = Class_newArray(array_class, count);
+    pushRef(array, frame->operand_stack);
 }
 
 void arraylength_exe(union Context *context, struct Frame *frame) {
-
+    // TODO
 }
 
 void athrow_exe(union Context *context, struct Frame *frame) {
@@ -1874,9 +1936,9 @@ struct Instruction newInstruction(u1 opcode) {
     } else if (NEW == opcode) {
         return makeInstruction(index16_fetchOp, new_exe);
     } else if (NEWARRAY == opcode) {
-        return makeInstruction(nop_fetchOp, newarray_exe);
+        return makeInstruction(newarray_fetchOp, newarray_exe);
     } else if (ANEWARRAY == opcode) {
-        return makeInstruction(nop_fetchOp, anewarray_exe);
+        return makeInstruction(index16_fetchOp, anewarray_exe);
     } else if (ARRAYLENGTH == opcode) {
         return makeInstruction(nop_fetchOp, arraylength_exe);
     } else if (ATHROW == opcode) {

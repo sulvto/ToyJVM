@@ -129,6 +129,13 @@ int Class_isImplements(struct Class *_this, struct Class *_other);
 
 char *Class_packageName(struct Class *_this);
 
+int Class_isArray(struct Class *_this);
+
+Object *Class_newArray(struct Class *_this, const unsigned int count);
+
+struct Class *Class_arrayClass(struct Class *_this);
+
+
 
 
 struct Method *resolvedInterfaceMethod(struct InterfaceMethodRef *interface_method_ref);

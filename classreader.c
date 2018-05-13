@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <dirent.h>
 #include <zlib.h>
+#include <zip.h>
 #include "type.h"
 #include "classreader.h"
 
@@ -270,9 +271,44 @@ void readMethods(const struct s_class_data *class_data, struct ClassFile *class_
 
 }
 
-static void readJAR(char *path) {
-    printf("jar %s\n", path);
+static int readJAR(const char *path, const char *class_name, struct s_class_data *class_data) {
+    printf("readJAR %s\n", path);
+    struct zip *p_zip;
+    zip_error_t error;
+    struct zip_source_t *src;
+    struct zip_t *za;
 
+    p_zip = zip_open(path, 0, &errno);
+
+    int fileCount;
+    fileCount = zip_get_num_files(p_zip);
+    printf("fileCount = %d\n",fileCount);
+    unsigned int i;
+
+    for (i = 0; i < fileCount ; i++) {
+        struct zip_stat zip_stat;
+        zip_stat_init(&zip_stat);
+        zip_stat_index(p_zip, i, 0, &zip_stat);
+        printf("%dth file name is [%s]\n",i,zip_stat.name);
+
+        if (strcmp(class_name, zip_stat.name) == 0) {
+            struct zip_file *pzip_file = zip_fopen_index(p_zip, i, 0);
+            class_data->data = (u1) malloc(sizeof(u1) * zip_stat.size);
+            class_data->index = 0;
+            class_data->length = zip_stat.size;
+            zip_fread(pzip_file, class_data->data, zip_stat.size);
+
+            /* close archive */
+            if (zip_close(p_zip) < 0) {
+                fprintf(stderr, "can't close zip archive '%s'\n", path);
+                return 1;
+            }
+
+            return 0;
+        }
+    }
+
+    return 1;
 }
 
 
@@ -283,7 +319,7 @@ static int readRootClasspath(const char *class_name, struct s_class_data *class_
     struct dirent *dirp;
 
     if ((dp = opendir(jar_path)) == NULL) {
-        return 0;
+        return 1;
     }
 
     while ((dirp = readdir(dp)) != NULL) {
@@ -293,19 +329,21 @@ static int readRootClasspath(const char *class_name, struct s_class_data *class_
         }
 
         if (strstr(dirp->d_name, ".jar") != NULL || strstr(dirp->d_name, ".JAR") != NULL) {
-            readJAR(dirp->d_name);
+            if(readJAR(dirp->d_name, class_name, class_data) == 0) {
+                return 0;
+            }
         }
     }
     printf("closedir \n");
 
     closedir(dp);
-    return 0;
+    return 1;
 }
 
 static int readExtClasspath(const char *class_name, struct s_class_data *class_data) {
     const char *jar_path = "/usr/java/jre1.8.0_172-amd64/lib/ext";
 
-    return 0;
+    return 1;
 }
 
 static int readUserClasspath(const char *class_name, struct s_class_data *class_data) {
@@ -313,6 +351,8 @@ static int readUserClasspath(const char *class_name, struct s_class_data *class_
     f = fopen(class_name, "r");
     int i = 0;
     u1 buf;
+    class_data->data = (u1) malloc(sizeof(u1) * x);
+
     while (fread(&buf, sizeof(u1), 1, f) != 0) {
         class_data->data[i++] = buf;
     }
@@ -326,15 +366,15 @@ struct s_class_data *readClassFile(const char *class_name) {
     printf("readClassFile %s\n", class_name);
     struct s_class_data *class_data = (struct s_class_data *) malloc(sizeof(struct s_class_data));
 
-    if (readRootClasspath(class_name, class_data)) {
+    if (readRootClasspath(class_name, class_data) == 0) {
         return class_data;
     }
 
-    if (readExtClasspath(class_name, class_data)) {
+    if (readExtClasspath(class_name, class_data) == 0) {
         return class_data;
     }
 
-    if (readUserClasspath(class_name, class_data)) {
+    if (readUserClasspath(class_name, class_data) == 0) {
         return class_data;
     }
 

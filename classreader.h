@@ -178,7 +178,7 @@ struct ClassFile {
 
 struct s_class_data {
     // ???
-    u1  data[1024];
+    u1  *data;
     int length;
     int index;
 };

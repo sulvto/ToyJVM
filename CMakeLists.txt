@@ -5,7 +5,7 @@ PROJECT(ToyJVM)
 SET(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -g")
 
-ADD_EXECUTABLE(ToyJVM main.c bytecode.c class.c classreader.c instruction.c interpreter.c map.c)
+ADD_EXECUTABLE(ToyJVM main.c map.c rtda.c bytecode.c classloader.c classreader.c array.c class.c instruction.c interpreter.c)
 
 FIND_PACKAGE(libzip REQUIRED)
 MARK_AS_ADVANCED(
@@ -22,5 +22,4 @@ ELSE()
 ENDIF (LIBZIP_INCLUDE_DIR AND LIBZIP_LIBRARY)
 
 
-INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/..)
-
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})

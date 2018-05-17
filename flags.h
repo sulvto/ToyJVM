@@ -24,4 +24,39 @@
 #define ACC_ANNOTATION  0x2000
 #define ACC_ENUM        0x4000
 
+
+int isPublic(u2 access_flags);
+
+int isPrivate(u2 access_flags);
+
+int isProtected(u2 access_flags);
+
+int isStatic(u2 access_flags);
+
+int isFinal(u2 access_flags);
+
+int isSuper(u2 access_flags);
+
+int isSynchronized(u2 access_flags);
+
+int isVolatile(u2 access_flags);
+
+int isBridge(u2 access_flags);
+
+int isTransient(u2 access_flags);
+
+int isVarargs(u2 access_flags);
+
+int isNative(u2 access_flags);
+
+int isInterface(u2 access_flags);
+
+int isAbstract(u2 access_flags);
+
+int isStrict      (u2 access_flags);
+int isSynthetic   (u2 access_flags);
+int isAnnotation  (u2 access_flags);
+int isEnum        (u2 access_flags);
+
+
 #endif //TOYJVM_FLAGS_H

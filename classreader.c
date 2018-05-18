@@ -3,8 +3,10 @@
 //
 #include <stdio.h>
 #include <dirent.h>
+#include <errno.h>
 #include <zlib.h>
 #include <zip.h>
+#include <stdlib.h>
 #include "type.h"
 #include "classreader.h"
 
@@ -351,7 +353,8 @@ static int readUserClasspath(const char *class_name, struct s_class_data *class_
     f = fopen(class_name, "r");
     int i = 0;
     u1 buf;
-    class_data->data = (u1) malloc(sizeof(u1) * x);
+    // TODO 1024 ?/?
+    class_data->data = (u1) malloc(sizeof(u1) * 1024);
 
     while (fread(&buf, sizeof(u1), 1, f) != 0) {
         class_data->data[i++] = buf;

@@ -211,7 +211,9 @@
 #define IFNONNULL       0xc7
 #define GOTO_W          0xc8
 #define JSR_W           0xc9
-
+#define BREAKPOINT      0xca
+#define impdep1         0xfe
+#define impdep2         0xff
 
 union Context {
     int index;

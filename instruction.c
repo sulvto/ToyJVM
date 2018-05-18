@@ -4,14 +4,20 @@
 
 #include <stdlib.h>
 #include <math.h>
+#include <stdio.h>
+#include <string.h>
 #include "rtda.h"
 #include "bytecode.h"
-#include "instruction.h"
 #include "interpreter.h"
-#include "class.h"
-
-
+#include "array.h"
+#include "rtda.c"
+#include "class.c"
+#include "classloader.h"
+#include "classref.h"
 // array type
+
+
+#include "instruction.h"
 #define AT_BOOLEAN  4
 #define AT_BYTE     5
 #define AT_CHAR     6
@@ -22,8 +28,19 @@
 #define AT_DOUBLE   11
 
 
+Object newObject(Class _class);
 
-struct Class *getPrimitiveArrayClass(struct ClassLoader *loader, unsigned int atype);
+int Object_isInterfaceOf(Object _this, Class _other);
+
+void initClass(Thread thread, Class _class);
+
+Class getPrimitiveArrayClass(ClassLoader loader, unsigned int atype);
+
+void scheduleClinit(Thread thread, Class _class);
+
+Class arrayClass(Class _this);
+
+
 
 
 
@@ -35,7 +52,7 @@ void branch_fetchOp(union Context *context, struct Bytecode *data) {
     context->offset = readBytecodeU2(data);
 }
 
-void branch(struct Frame *frame, int offset) {
+void branch(Frame frame, int offset) {
     int pc = frame->thread->pc;
     frame->nextPC = pc + offset;
 }
@@ -48,68 +65,68 @@ void index16_fetchOp(union Context *context, struct Bytecode *data) {
     context->index = readBytecodeU2(data);
 }
 
-void nop_exe(union Context *context, struct Frame *frame) {
+void nop_exe(union Context *context, Frame frame) {
 
 }
 
-void aconst_null_exe(union Context *context, struct Frame *frame) {
-    pushRef(NULL, frame->operand_stack);
+void aconst_null_exe(union Context *context, Frame frame) {
+    Frame_pushRef(frame, NULL);
 }
 
-void iconst_m1_exe(union Context *context, struct Frame *frame) {
-    pushInt(-1, frame->operand_stack);
+void iconst_m1_exe(union Context *context, Frame frame) {
+    Frame_pushInt(frame, -1);
 }
 
-void iconst_0_exe(union Context *context, struct Frame *frame) {
-    pushInt(0, frame->operand_stack);
+void iconst_0_exe(union Context *context, Frame frame) {
+    Frame_pushInt(frame, 0);
 }
 
-void iconst_1_exe(union Context *context, struct Frame *frame) {
-    pushInt(1, frame->operand_stack);
+void iconst_1_exe(union Context *context, Frame frame) {
+    Frame_pushInt(frame, 1);
 }
 
-void iconst_2_exe(union Context *context, struct Frame *frame) {
-    pushInt(2, frame->operand_stack);
+void iconst_2_exe(union Context *context, Frame frame) {
+    Frame_pushInt(frame, 2);
 }
 
-void iconst_3_exe(union Context *context, struct Frame *frame) {
-    pushInt(3, frame->operand_stack);
+void iconst_3_exe(union Context *context, Frame frame) {
+    Frame_pushInt(frame, 3);
 }
 
-void iconst_4_exe(union Context *context, struct Frame *frame) {
-    pushInt(4, frame->operand_stack);
+void iconst_4_exe(union Context *context, Frame frame) {
+    Frame_pushInt(frame, 4);
 }
 
-void iconst_5_exe(union Context *context, struct Frame *frame) {
-    pushInt(5, frame->operand_stack);
+void iconst_5_exe(union Context *context, Frame frame) {
+    Frame_pushInt(frame, 5);
 }
 
-void lconst_0_exe(union Context *context, struct Frame *frame) {
-    pushLong(0, frame->operand_stack);
+void lconst_0_exe(union Context *context, Frame frame) {
+    Frame_pushLong(frame, 0);
 }
 
-void lconst_1_exe(union Context *context, struct Frame *frame) {
-    pushLong(1, frame->operand_stack);
+void lconst_1_exe(union Context *context, Frame frame) {
+    Frame_pushLong(frame, 1);
 }
 
-void fconst_0_exe(union Context *context, struct Frame *frame) {
-    pushFloat(0.0, frame->operand_stack);
+void fconst_0_exe(union Context *context, Frame frame) {
+    Frame_pushFloat(frame, 0.0);
 }
 
-void fconst_1_exe(union Context *context, struct Frame *frame) {
-    pushFloat(1.0, frame->operand_stack);
+void fconst_1_exe(union Context *context, Frame frame) {
+    Frame_pushFloat(frame, 1.0);
 }
 
-void fconst_2_exe(union Context *context, struct Frame *frame) {
-    pushFloat(2.0, frame->operand_stack);
+void fconst_2_exe(union Context *context, Frame frame) {
+    Frame_pushFloat(frame, 2.0);
 }
 
-void dconst_0_exe(union Context *context, struct Frame *frame) {
-    pushDouble(0.0, frame->operand_stack);
+void dconst_0_exe(union Context *context, Frame frame) {
+    Frame_pushDouble(frame, 0.0);
 }
 
-void dconst_1_exe(union Context *context, struct Frame *frame) {
-    pushDouble(1.0, frame->operand_stack);
+void dconst_1_exe(union Context *context, Frame frame) {
+    Frame_pushDouble(frame, 1.0);
 }
 
 void bipush_fetchOp(union Context *context, struct Bytecode *bytecode_data) {
@@ -117,9 +134,9 @@ void bipush_fetchOp(union Context *context, struct Bytecode *bytecode_data) {
     context->bi = readBytecodeU1(bytecode_data);
 }
 
-void bipush_exe(union Context *context, struct Frame *frame) {
+void bipush_exe(union Context *context, Frame frame) {
     u1 bi = context->bi;
-    pushInt(bi, frame->operand_stack);
+    Frame_pushInt(frame, bi);
 
 }
 
@@ -128,890 +145,888 @@ void sipush_fetchOp(union Context *context, struct Bytecode *bytecode_data) {
     context->si = readBytecodeU2(bytecode_data);
 }
 
-void sipush_exe(union Context *context, struct Frame *frame) {
+void sipush_exe(union Context *context, Frame frame) {
     short si = context->si;
-    pushInt(si, frame->operand_stack);
+    Frame_pushInt(frame, si);
 }
 
-void ldc_exe(union Context *context, struct Frame *frame) {
-
-}
-
-void ldc_w_exe(union Context *context, struct Frame *frame) {
+void ldc_exe(union Context *context, Frame frame) {
 
 }
 
-void ldc2_w_exe(union Context *context, struct Frame *frame) {
+void ldc_w_exe(union Context *context, Frame frame) {
 
 }
 
-void iload(struct Frame *frame, const unsigned int index) {
-    int i = getInt(index, frame->localVars);
-    pushInt(i, frame->operand_stack);
+void ldc2_w_exe(union Context *context, Frame frame) {
+
 }
 
-void lload(struct Frame *frame, const unsigned int index) {
-    long l = getLong(index, frame->localVars);
-    pushLong(l, frame->operand_stack);
+void iload(Frame frame, const unsigned int index) {
+    int i = Frame_getInt(frame, index);
+    Frame_pushInt(frame, i);
 }
 
-void fload(struct Frame *frame, const unsigned int index) {
-    float f = getFloat(index, frame->localVars);
-    pushFloat(f, frame->operand_stack);
+void lload(Frame frame, const unsigned int index) {
+    long l = Frame_getLong(frame, index);
+    Frame_pushLong(frame, l);
 }
 
-void dload(struct Frame *frame, const unsigned int index) {
-    double d = getDouble(index, frame->localVars);
-    pushDouble(d, frame->operand_stack);
+void fload(Frame frame, const unsigned int index) {
+    float f = Frame_getFloat(frame, index);
+    Frame_pushFloat(frame, f);
 }
 
-void iload_exe(union Context *context, struct Frame *frame) {
+void dload(Frame frame, const unsigned int index) {
+    double d = Frame_getDouble(frame, index);
+    Frame_pushDouble(frame, d);
+}
+
+void iload_exe(union Context *context, Frame frame) {
     iload(frame, context->index);
 }
 
-void lload_exe(union Context *context, struct Frame *frame) {
+void lload_exe(union Context *context, Frame frame) {
     lload(frame, context->index);
 }
 
-void fload_exe(union Context *context, struct Frame *frame) {
+void fload_exe(union Context *context, Frame frame) {
     fload(frame, context->index);
 }
 
-void dload_exe(union Context *context, struct Frame *frame) {
+void dload_exe(union Context *context, Frame frame) {
     dload(frame, context->index);
 }
 
-void aload_exe(union Context *context, struct Frame *frame) {
+void aload_exe(union Context *context, Frame frame) {
 
 }
 
-void iload_0_exe(union Context *context, struct Frame *frame) {
+void iload_0_exe(union Context *context, Frame frame) {
     iload(frame, 0);
 }
 
-void iload_1_exe(union Context *context, struct Frame *frame) {
+void iload_1_exe(union Context *context, Frame frame) {
     iload(frame, 1);
 }
 
-void iload_2_exe(union Context *context, struct Frame *frame) {
+void iload_2_exe(union Context *context, Frame frame) {
     iload(frame, 2);
 }
 
-void iload_3_exe(union Context *context, struct Frame *frame) {
+void iload_3_exe(union Context *context, Frame frame) {
     iload(frame, 3);
 }
 
-void lload_0_exe(union Context *context, struct Frame *frame) {
+void lload_0_exe(union Context *context, Frame frame) {
     lload(frame, 0);
 }
 
-void lload_1_exe(union Context *context, struct Frame *frame) {
+void lload_1_exe(union Context *context, Frame frame) {
     lload(frame, 1);
 }
 
-void lload_2_exe(union Context *context, struct Frame *frame) {
+void lload_2_exe(union Context *context, Frame frame) {
     lload(frame, 2);
 }
 
-void lload_3_exe(union Context *context, struct Frame *frame) {
+void lload_3_exe(union Context *context, Frame frame) {
     lload(frame, 3);
 }
 
-void fload_0_exe(union Context *context, struct Frame *frame) {
+void fload_0_exe(union Context *context, Frame frame) {
     fload(frame, 0);
 }
 
-void fload_1_exe(union Context *context, struct Frame *frame) {
+void fload_1_exe(union Context *context, Frame frame) {
     fload(frame, 1);
 }
 
-void fload_2_exe(union Context *context, struct Frame *frame) {
+void fload_2_exe(union Context *context, Frame frame) {
     fload(frame, 2);
 }
 
-void fload_3_exe(union Context *context, struct Frame *frame) {
+void fload_3_exe(union Context *context, Frame frame) {
     fload(frame, 3);
 }
 
-void dload_0_exe(union Context *context, struct Frame *frame) {
+void dload_0_exe(union Context *context, Frame frame) {
     dload(frame, 0);
 }
 
-void dload_1_exe(union Context *context, struct Frame *frame) {
+void dload_1_exe(union Context *context, Frame frame) {
     dload(frame, 1);
 }
 
-void dload_2_exe(union Context *context, struct Frame *frame) {
+void dload_2_exe(union Context *context, Frame frame) {
     dload(frame, 2);
 }
 
-void dload_3_exe(union Context *context, struct Frame *frame) {
+void dload_3_exe(union Context *context, Frame frame) {
     dload(frame, 3);
 }
 
-void aload_0_exe(union Context *context, struct Frame *frame) {
+void aload_0_exe(union Context *context, Frame frame) {
 
 }
 
-void aload_1_exe(union Context *context, struct Frame *frame) {
+void aload_1_exe(union Context *context, Frame frame) {
 
 }
 
-void aload_2_exe(union Context *context, struct Frame *frame) {
+void aload_2_exe(union Context *context, Frame frame) {
 
 }
 
-void aload_3_exe(union Context *context, struct Frame *frame) {
+void aload_3_exe(union Context *context, Frame frame) {
 
 }
 
-void iaload_exe(union Context *context, struct Frame *frame) {
+void iaload_exe(union Context *context, Frame frame) {
 
 }
 
-void laload_exe(union Context *context, struct Frame *frame) {
+void laload_exe(union Context *context, Frame frame) {
 
 }
 
-void faload_exe(union Context *context, struct Frame *frame) {
+void faload_exe(union Context *context, Frame frame) {
 
 }
 
-void daload_exe(union Context *context, struct Frame *frame) {
+void daload_exe(union Context *context, Frame frame) {
 
 }
 
-void aaload_exe(union Context *context, struct Frame *frame) {
+void aaload_exe(union Context *context, Frame frame) {
 
 }
 
-void baload_exe(union Context *context, struct Frame *frame) {
+void baload_exe(union Context *context, Frame frame) {
 
 }
 
-void caload_exe(union Context *context, struct Frame *frame) {
+void caload_exe(union Context *context, Frame frame) {
 
 }
 
-void saload_exe(union Context *context, struct Frame *frame) {
+void saload_exe(union Context *context, Frame frame) {
 
 }
 
-void istore(struct Frame *frame, const unsigned int index) {
-    int i = popInt(frame->operand_stack);
-    setInt(index, i, frame->localVars);
+void istore(Frame frame, const unsigned int index) {
+    int i = Frame_popInt(frame);
+    Frame_setInt(frame, index, i);
 }
 
-void lstore(struct Frame *frame, const unsigned int index) {
-    long l = popLong(frame->operand_stack);
-    setLong(index, l, frame->localVars);
+void lstore(Frame frame, const unsigned int index) {
+    long l = Frame_popLong(frame);
+    Frame_setLong(frame, index, l);
 }
 
-void fstore(struct Frame *frame, const unsigned int index) {
-    float f = popFloat(frame->operand_stack);
-    setFloat(index, f, frame->localVars);
+void fstore(Frame frame, const unsigned int index) {
+    float f = Frame_popFloat(frame);
+    Frame_setFloat(frame, index, f);
 }
 
-void dstore(struct Frame *frame, const unsigned int index) {
-    double d = popDouble(frame->operand_stack);
-    setDouble(index, d, frame->localVars);
+void dstore(Frame frame, const unsigned int index) {
+    double d = Frame_popDouble(frame);
+    Frame_setDouble(frame, index, d);
 }
 
-
-void istore_exe(union Context *context, struct Frame *frame) {
+void istore_exe(union Context *context, Frame frame) {
     istore(frame, context->index);
 }
 
-void lstore_exe(union Context *context, struct Frame *frame) {
+void lstore_exe(union Context *context, Frame frame) {
     lstore(frame, context->index);
 }
 
-void fstore_exe(union Context *context, struct Frame *frame) {
+void fstore_exe(union Context *context, Frame frame) {
     fstore(frame, context->index);
 }
 
-void dstore_exe(union Context *context, struct Frame *frame) {
+void dstore_exe(union Context *context, Frame frame) {
     dstore(frame, context->index);
 }
 
-void astore_exe(union Context *context, struct Frame *frame) {
+void astore_exe(union Context *context, Frame frame) {
 
 }
 
-void istore_0_exe(union Context *context, struct Frame *frame) {
+void istore_0_exe(union Context *context, Frame frame) {
     istore(frame, 0);
 }
 
-void istore_1_exe(union Context *context, struct Frame *frame) {
+void istore_1_exe(union Context *context, Frame frame) {
     istore(frame, 1);
 }
 
-void istore_2_exe(union Context *context, struct Frame *frame) {
+void istore_2_exe(union Context *context, Frame frame) {
     istore(frame, 2);
 }
 
-void istore_3_exe(union Context *context, struct Frame *frame) {
+void istore_3_exe(union Context *context, Frame frame) {
     istore(frame, 3);
 }
 
-void lstore_0_exe(union Context *context, struct Frame *frame) {
+void lstore_0_exe(union Context *context, Frame frame) {
     lstore(frame, 0);
 }
 
-void lstore_1_exe(union Context *context, struct Frame *frame) {
+void lstore_1_exe(union Context *context, Frame frame) {
     lstore(frame, 1);
 }
 
-void lstore_2_exe(union Context *context, struct Frame *frame) {
+void lstore_2_exe(union Context *context, Frame frame) {
     lstore(frame, 2);
 }
 
-void lstore_3_exe(union Context *context, struct Frame *frame) {
+void lstore_3_exe(union Context *context, Frame frame) {
     lstore(frame, 3);
 }
 
-void fstore_0_exe(union Context *context, struct Frame *frame) {
+void fstore_0_exe(union Context *context, Frame frame) {
     fstore(frame, 0);
 }
 
-void fstore_1_exe(union Context *context, struct Frame *frame) {
+void fstore_1_exe(union Context *context, Frame frame) {
     fstore(frame, 1);
 }
 
-void fstore_2_exe(union Context *context, struct Frame *frame) {
+void fstore_2_exe(union Context *context, Frame frame) {
     fstore(frame, 2);
 }
 
-void fstore_3_exe(union Context *context, struct Frame *frame) {
+void fstore_3_exe(union Context *context, Frame frame) {
     fstore(frame, 3);
 }
 
-void dstore_0_exe(union Context *context, struct Frame *frame) {
+void dstore_0_exe(union Context *context, Frame frame) {
     dstore(frame, 0);
 }
 
-void dstore_1_exe(union Context *context, struct Frame *frame) {
+void dstore_1_exe(union Context *context, Frame frame) {
     dstore(frame, 1);
 }
 
-void dstore_2_exe(union Context *context, struct Frame *frame) {
+void dstore_2_exe(union Context *context, Frame frame) {
     dstore(frame, 2);
 }
 
-void dstore_3_exe(union Context *context, struct Frame *frame) {
+void dstore_3_exe(union Context *context, Frame frame) {
     dstore(frame, 3);
 }
 
-void astore_0_exe(union Context *context, struct Frame *frame) {
+void astore_0_exe(union Context *context, Frame frame) {
 
 }
 
-void astore_1_exe(union Context *context, struct Frame *frame) {
+void astore_1_exe(union Context *context, Frame frame) {
 
 }
 
-void astore_2_exe(union Context *context, struct Frame *frame) {
+void astore_2_exe(union Context *context, Frame frame) {
 
 }
 
-void astore_3_exe(union Context *context, struct Frame *frame) {
+void astore_3_exe(union Context *context, Frame frame) {
 
 }
 
-void iastore_exe(union Context *context, struct Frame *frame) {
+void iastore_exe(union Context *context, Frame frame) {
 
 }
 
-void lastore_exe(union Context *context, struct Frame *frame) {
+void lastore_exe(union Context *context, Frame frame) {
 
 }
 
-void fastore_exe(union Context *context, struct Frame *frame) {
+void fastore_exe(union Context *context, Frame frame) {
 
 }
 
-void dastore_exe(union Context *context, struct Frame *frame) {
+void dastore_exe(union Context *context, Frame frame) {
 
 }
 
-void aastore_exe(union Context *context, struct Frame *frame) {
+void aastore_exe(union Context *context, Frame frame) {
 
 }
 
-void bastore_exe(union Context *context, struct Frame *frame) {
+void bastore_exe(union Context *context, Frame frame) {
 
 }
 
-void castore_exe(union Context *context, struct Frame *frame) {
+void castore_exe(union Context *context, Frame frame) {
 
 }
 
-void sastore_exe(union Context *context, struct Frame *frame) {
+void sastore_exe(union Context *context, Frame frame) {
 
 }
 
-void pop_exe(union Context *context, struct Frame *frame) {
-    popSlot(frame->operand_stack);
+void pop_exe(union Context *context, Frame frame) {
+    Frame_popSlot(frame);
 }
 
-void pop2_exe(union Context *context, struct Frame *frame) {
-    popSlot(frame->operand_stack);
-    popSlot(frame->operand_stack);
+void pop2_exe(union Context *context, Frame frame) {
+    Frame_popSlot(frame);
+    Frame_popSlot(frame);
 }
 
-void dup_exe(union Context *context, struct Frame *frame) {
-    struct Slot slot = popSlot(frame->operand_stack);
-    pushSlot(slot, frame->operand_stack);
-    pushSlot(slot, frame->operand_stack);
+void dup_exe(union Context *context, Frame frame) {
+    Slot slot = Frame_popSlot(frame);
+    Frame_pushSlot(frame, slot);
+    Frame_pushSlot(frame, slot);
 }
 
-void dup_x1_exe(union Context *context, struct Frame *frame) {
-
-}
-
-void dup_x2_exe(union Context *context, struct Frame *frame) {
+void dup_x1_exe(union Context *context, Frame frame) {
 
 }
 
-void dup2_exe(union Context *context, struct Frame *frame) {
+void dup_x2_exe(union Context *context, Frame frame) {
 
 }
 
-void dup2_x1_exe(union Context *context, struct Frame *frame) {
+void dup2_exe(union Context *context, Frame frame) {
 
 }
 
-void dup2_x2_exe(union Context *context, struct Frame *frame) {
+void dup2_x1_exe(union Context *context, Frame frame) {
 
 }
 
-void swap_exe(union Context *context, struct Frame *frame) {
-    struct Slot slot1 = popSlot(frame->operand_stack);
-    struct Slot slot2 = popSlot(frame->operand_stack);
-    pushSlot(slot1, frame->operand_stack);
-    pushSlot(slot2, frame->operand_stack);
+void dup2_x2_exe(union Context *context, Frame frame) {
+
 }
 
-void iadd_exe(union Context *context, struct Frame *frame) {
-    int a = popInt(frame->operand_stack);
-    int b = popInt(frame->operand_stack);
+void swap_exe(union Context *context, Frame frame) {
+    Slot slot1 = Frame_popSlot(frame);
+    Slot slot2 = Frame_popSlot(frame);
+    Frame_pushSlot(frame, slot1);
+    Frame_pushSlot(frame, slot2);
+}
+
+void iadd_exe(union Context *context, Frame frame) {
+    int a = Frame_popInt(frame);
+    int b = Frame_popInt(frame);
     printf("iadd %d\n", a + b);
-    pushInt(a + b, frame->operand_stack);
+    Frame_pushInt(frame, a + b);
 }
 
-void ladd_exe(union Context *context, struct Frame *frame) {
-    long a = popLong(frame->operand_stack);
-    long b = popLong(frame->operand_stack);
-    pushLong(a + b, frame->operand_stack);
+void ladd_exe(union Context *context, Frame frame) {
+    long a = Frame_popLong(frame);
+    long b = Frame_popLong(frame);
+    Frame_pushLong(frame, a + b);
 }
 
-void fadd_exe(union Context *context, struct Frame *frame) {
-    float a = popFloat(frame->operand_stack);
-    float b = popFloat(frame->operand_stack);
-    pushFloat(a + b, frame->operand_stack);
+void fadd_exe(union Context *context, Frame frame) {
+    float a = Frame_popFloat(frame);
+    float b = Frame_popFloat(frame);
+    Frame_pushFloat(frame, a + b);
 }
 
-void dadd_exe(union Context *context, struct Frame *frame) {
-    double a = popDouble(frame->operand_stack);
-    double b = popDouble(frame->operand_stack);
-    pushDouble(a + b, frame->operand_stack);
+void dadd_exe(union Context *context, Frame frame) {
+    double a = Frame_popDouble(frame);
+    double b = Frame_popDouble(frame);
+    Frame_pushDouble(frame, a + b);
 }
 
-void isub_exe(union Context *context, struct Frame *frame) {
-    int a = popInt(frame->operand_stack);
-    int b = popInt(frame->operand_stack);
-    pushInt(a - b, frame->operand_stack);
+void isub_exe(union Context *context, Frame frame) {
+    int a = Frame_popInt(frame);
+    int b = Frame_popInt(frame);
+    Frame_pushInt(frame, a - b);
 }
 
-void lsub_exe(union Context *context, struct Frame *frame) {
-    long a = popLong(frame->operand_stack);
-    long b = popLong(frame->operand_stack);
-    pushLong(a - b, frame->operand_stack);
+void lsub_exe(union Context *context, Frame frame) {
+    long a = Frame_popLong(frame);
+    long b = Frame_popLong(frame);
+    Frame_pushLong(frame, a - b);
 }
 
-void fsub_exe(union Context *context, struct Frame *frame) {
-    float a = popFloat(frame->operand_stack);
-    float b = popFloat(frame->operand_stack);
-    pushFloat(a - b, frame->operand_stack);
+void fsub_exe(union Context *context, Frame frame) {
+    float a = Frame_popFloat(frame);
+    float b = Frame_popFloat(frame);
+    Frame_pushFloat(frame, a - b);
 }
 
-void dsub_exe(union Context *context, struct Frame *frame) {
-    double a = popDouble(frame->operand_stack);
-    double b = popDouble(frame->operand_stack);
-    pushDouble(a - b, frame->operand_stack);
+void dsub_exe(union Context *context, Frame frame) {
+    double a = Frame_popDouble(frame);
+    double b = Frame_popDouble(frame);
+    Frame_pushDouble(frame, a - b);
 }
 
-void imul_exe(union Context *context, struct Frame *frame) {
-    int a = popInt(frame->operand_stack);
-    int b = popInt(frame->operand_stack);
-    pushInt(a * b, frame->operand_stack);
+void imul_exe(union Context *context, Frame frame) {
+    int a = Frame_popInt(frame);
+    int b = Frame_popInt(frame);
+    Frame_pushInt(frame, a * b);
 }
 
-void lmul_exe(union Context *context, struct Frame *frame) {
-    long a = popLong(frame->operand_stack);
-    long b = popLong(frame->operand_stack);
-    pushLong(a * b, frame->operand_stack);
+void lmul_exe(union Context *context, Frame frame) {
+    long a = Frame_popLong(frame);
+    long b = Frame_popLong(frame);
+    Frame_pushLong(frame, a * b);
 }
 
-void fmul_exe(union Context *context, struct Frame *frame) {
-    float a = popFloat(frame->operand_stack);
-    float b = popFloat(frame->operand_stack);
-    pushFloat(a * b, frame->operand_stack);
+void fmul_exe(union Context *context, Frame frame) {
+    float a = Frame_popFloat(frame);
+    float b = Frame_popFloat(frame);
+    Frame_pushFloat(frame, a * b);
 }
 
-void dmul_exe(union Context *context, struct Frame *frame) {
-    double a = popDouble(frame->operand_stack);
-    double b = popDouble(frame->operand_stack);
-    pushDouble(a * b, frame->operand_stack);
+void dmul_exe(union Context *context, Frame frame) {
+    double a = Frame_popDouble(frame);
+    double b = Frame_popDouble(frame);
+    Frame_pushDouble(frame, a * b);
 }
 
-void idiv_exe(union Context *context, struct Frame *frame) {
-    int a = popInt(frame->operand_stack);
-    int b = popInt(frame->operand_stack);
+void idiv_exe(union Context *context, Frame frame) {
+    int a = Frame_popInt(frame);
+    int b = Frame_popInt(frame);
     if (a == 0) {
         // TODO
     }
 
     div_t result = div(b, a);
 
-    pushInt(result.quot, frame->operand_stack);
+    Frame_pushInt(frame, result.quot);
 }
 
-void ldiv_exe(union Context *context, struct Frame *frame) {
-    long a = popLong(frame->operand_stack);
-    long b = popLong(frame->operand_stack);
+void ldiv_exe(union Context *context, Frame frame) {
+    long a = Frame_popLong(frame);
+    long b = Frame_popLong(frame);
     if (a == 0) {
         // TODO
     }
 
     ldiv_t result = ldiv(b, a);
 
-    pushLong(result.quot, frame->operand_stack);
+    Frame_pushLong(frame, result.quot);
 }
 
-void fdiv_exe(union Context *context, struct Frame *frame) {
-    float a = popFloat(frame->operand_stack);
-    float b = popFloat(frame->operand_stack);
+void fdiv_exe(union Context *context, Frame frame) {
+    float a = Frame_popFloat(frame);
+    float b = Frame_popFloat(frame);
     if (a == 0) {
         // TODO
     }
-    pushFloat(b / a, frame->operand_stack);
+    Frame_pushFloat(frame, b / a);
 }
 
-void ddiv_exe(union Context *context, struct Frame *frame) {
-    double a = popDouble(frame->operand_stack);
-    double b = popDouble(frame->operand_stack);
+void ddiv_exe(union Context *context, Frame frame) {
+    double a = Frame_popDouble(frame);
+    double b = Frame_popDouble(frame);
     if (a == 0) {
         // TODO
     }
-    pushDouble(b / a, frame->operand_stack);
+    Frame_pushDouble(frame, b / a);
 }
 
-void irem_exe(union Context *context, struct Frame *frame) {
-    int a = popInt(frame->operand_stack);
-    int b = popInt(frame->operand_stack);
+void irem_exe(union Context *context, Frame frame) {
+    int a = Frame_popInt(frame);
+    int b = Frame_popInt(frame);
     if (a == 0) {
         // TODO
     }
 
     div_t result = div(b, a);
 
-    pushInt(result.rem, frame->operand_stack);
+    Frame_pushInt(frame, result.rem);
 }
 
-void lrem_exe(union Context *context, struct Frame *frame) {
-    long a = popLong(frame->operand_stack);
-    long b = popLong(frame->operand_stack);
+void lrem_exe(union Context *context, Frame frame) {
+    long a = Frame_popLong(frame);
+    long b = Frame_popLong(frame);
     if (a == 0) {
         // TODO
     }
 
     ldiv_t result = ldiv(b, a);
 
-    pushLong(result.rem, frame->operand_stack);
+    Frame_pushLong(frame, result.rem);
 }
 
-void frem_exe(union Context *context, struct Frame *frame) {
-    float a = popFloat(frame->operand_stack);
-    float b = popFloat(frame->operand_stack);
+void frem_exe(union Context *context, Frame frame) {
+    float a = Frame_popFloat(frame);
+    float b = Frame_popFloat(frame);
     if (a == 0) {
         // TODO
     }
 //    pushFloat(fmod(b, a), frame->operand_stack);
 }
 
-void drem_exe(union Context *context, struct Frame *frame) {
-    double a = popDouble(frame->operand_stack);
-    double b = popDouble(frame->operand_stack);
+void drem_exe(union Context *context, Frame frame) {
+    double a = Frame_popDouble(frame);
+    double b = Frame_popDouble(frame);
     if (a == 0) {
         // TODO
     }
 //    pushDouble(fmod(b, a), frame->operand_stack);
 }
 
-void ineg_exe(union Context *context, struct Frame *frame) {
-    int a = popInt(frame->operand_stack);
-    int b = popInt(frame->operand_stack);
-    pushInt(a + b, frame->operand_stack);
+void ineg_exe(union Context *context, Frame frame) {
+    int a = Frame_popInt(frame);
+    int b = Frame_popInt(frame);
+    Frame_pushInt(frame, a + b);
 }
 
-void lneg_exe(union Context *context, struct Frame *frame) {
-    long a = popLong(frame->operand_stack);
-    long b = popLong(frame->operand_stack);
-    pushLong(a + b, frame->operand_stack);
+void lneg_exe(union Context *context, Frame frame) {
+    long a = Frame_popLong(frame);
+    long b = Frame_popLong(frame);
+    Frame_pushLong(frame, a + b);
 }
 
-void fneg_exe(union Context *context, struct Frame *frame) {
-    float a = popFloat(frame->operand_stack);
-    float b = popFloat(frame->operand_stack);
-    pushFloat(a + b, frame->operand_stack);
-
+void fneg_exe(union Context *context, Frame frame) {
+    float a = Frame_popFloat(frame);
+    float b = Frame_popFloat(frame);
+    Frame_pushFloat(frame, a + b);
 }
 
-void dneg_exe(union Context *context, struct Frame *frame) {
-    double a = popDouble(frame->operand_stack);
-    double b = popDouble(frame->operand_stack);
-    pushDouble(a + b, frame->operand_stack);
-
-}
-
-void ishl_exe(union Context *context, struct Frame *frame) {
+void dneg_exe(union Context *context, Frame frame) {
+    double a = Frame_popDouble(frame);
+    double b = Frame_popDouble(frame);
+    Frame_pushDouble(frame, a + b);
 
 }
 
-void lshl_exe(union Context *context, struct Frame *frame) {
+void ishl_exe(union Context *context, Frame frame) {
 
 }
 
-void ishr_exe(union Context *context, struct Frame *frame) {
+void lshl_exe(union Context *context, Frame frame) {
 
 }
 
-void lshr_exe(union Context *context, struct Frame *frame) {
+void ishr_exe(union Context *context, Frame frame) {
 
 }
 
-void iushr_exe(union Context *context, struct Frame *frame) {
+void lshr_exe(union Context *context, Frame frame) {
 
 }
 
-void lushr_exe(union Context *context, struct Frame *frame) {
+void iushr_exe(union Context *context, Frame frame) {
 
 }
 
-void iand_exe(union Context *context, struct Frame *frame) {
-    int v2 = popInt(frame->operand_stack);
-    int v1 = popInt(frame->operand_stack);
-    pushInt(v1 & v2, frame->operand_stack);
-}
-
-void land_exe(union Context *context, struct Frame *frame) {
-    long v2 = popLong(frame->operand_stack);
-    long v1 = popLong(frame->operand_stack);
-    pushLong(v1 & v2, frame->operand_stack);
-}
-
-void ior_exe(union Context *context, struct Frame *frame) {
-    int v2 = popInt(frame->operand_stack);
-    int v1 = popInt(frame->operand_stack);
-    pushInt(v1 | v2, frame->operand_stack);
-}
-
-void lor_exe(union Context *context, struct Frame *frame) {
-    long v2 = popLong(frame->operand_stack);
-    long v1 = popLong(frame->operand_stack);
-    pushLong(v1 | v2, frame->operand_stack);
-}
-
-void ixor_exe(union Context *context, struct Frame *frame) {
+void lushr_exe(union Context *context, Frame frame) {
 
 }
 
-void lxor_exe(union Context *context, struct Frame *frame) {
+void iand_exe(union Context *context, Frame frame) {
+    int v2 = Frame_popInt(frame);
+    int v1 = Frame_popInt(frame);
+    Frame_pushInt(frame, v1 & v2);
+}
+
+void land_exe(union Context *context, Frame frame) {
+    long v2 = Frame_popLong(frame);
+    long v1 = Frame_popLong(frame);
+    Frame_pushLong(frame, v1 & v2);
+}
+
+void ior_exe(union Context *context, Frame frame) {
+    int v2 = Frame_popInt(frame);
+    int v1 = Frame_popInt(frame);
+    Frame_pushInt(frame, v1 | v2);
+}
+
+void lor_exe(union Context *context, Frame frame) {
+    long v2 = Frame_popLong(frame);
+    long v1 = Frame_popLong(frame);
+    Frame_pushLong(frame, v1 | v2);
+}
+
+void ixor_exe(union Context *context, Frame frame) {
 
 }
 
-void iinc_exe(union Context *context, struct Frame *frame) {
-    int v = popInt(frame->operand_stack);
-    pushInt(v + 1, frame->operand_stack);
-}
-
-void i2l_exe(union Context *context, struct Frame *frame) {
+void lxor_exe(union Context *context, Frame frame) {
 
 }
 
-void i2f_exe(union Context *context, struct Frame *frame) {
+void iinc_exe(union Context *context, Frame frame) {
+    int v = Frame_popInt(frame);
+    Frame_pushInt(frame, v + 1);
+}
+
+void i2l_exe(union Context *context, Frame frame) {
 
 }
 
-void i2d_exe(union Context *context, struct Frame *frame) {
+void i2f_exe(union Context *context, Frame frame) {
 
 }
 
-void l2i_exe(union Context *context, struct Frame *frame) {
+void i2d_exe(union Context *context, Frame frame) {
 
 }
 
-void l2f_exe(union Context *context, struct Frame *frame) {
+void l2i_exe(union Context *context, Frame frame) {
 
 }
 
-void l2d_exe(union Context *context, struct Frame *frame) {
+void l2f_exe(union Context *context, Frame frame) {
 
 }
 
-void f2i_exe(union Context *context, struct Frame *frame) {
+void l2d_exe(union Context *context, Frame frame) {
 
 }
 
-void f2l_exe(union Context *context, struct Frame *frame) {
+void f2i_exe(union Context *context, Frame frame) {
 
 }
 
-void f2d_exe(union Context *context, struct Frame *frame) {
+void f2l_exe(union Context *context, Frame frame) {
 
 }
 
-void d2i_exe(union Context *context, struct Frame *frame) {
+void f2d_exe(union Context *context, Frame frame) {
 
 }
 
-void d2l_exe(union Context *context, struct Frame *frame) {
+void d2i_exe(union Context *context, Frame frame) {
 
 }
 
-void d2f_exe(union Context *context, struct Frame *frame) {
+void d2l_exe(union Context *context, Frame frame) {
 
 }
 
-void i2b_exe(union Context *context, struct Frame *frame) {
+void d2f_exe(union Context *context, Frame frame) {
 
 }
 
-void i2c_exe(union Context *context, struct Frame *frame) {
+void i2b_exe(union Context *context, Frame frame) {
 
 }
 
-void i2s_exe(union Context *context, struct Frame *frame) {
+void i2c_exe(union Context *context, Frame frame) {
 
 }
 
-void lcmp_exe(union Context *context, struct Frame *frame) {
-    long v2 = popLong(frame->operand_stack);
-    long v1 = popLong(frame->operand_stack);
+void i2s_exe(union Context *context, Frame frame) {
+
+}
+
+void lcmp_exe(union Context *context, Frame frame) {
+    long v2 = Frame_popLong(frame);
+    long v1 = Frame_popLong(frame);
     if (v1 > v2) {
-        pushInt(1, frame->operand_stack);
+        Frame_pushInt(frame, 1);
     } else if (v1 == v2) {
-        pushInt(0, frame->operand_stack);
+        Frame_pushInt(frame, 0);
     } else {
-        pushInt(-1, frame->operand_stack);
+        Frame_pushInt(frame, -1);
     }
 }
 
-void fcmpl_exe(union Context *context, struct Frame *frame) {
+void fcmpl_exe(union Context *context, Frame frame) {
 
 }
 
-void fcmpg_exe(union Context *context, struct Frame *frame) {
+void fcmpg_exe(union Context *context, Frame frame) {
 
 }
 
-void dcmpl_exe(union Context *context, struct Frame *frame) {
+void dcmpl_exe(union Context *context, Frame frame) {
 
 }
 
-void dcmpg_exe(union Context *context, struct Frame *frame) {
+void dcmpg_exe(union Context *context, Frame frame) {
 
 }
 
-void ifeq_exe(union Context *context, struct Frame *frame) {
-    int v = popInt(frame->operand_stack);
+void ifeq_exe(union Context *context, Frame frame) {
+    int v = Frame_popInt(frame);
     if (v == 0) {
         branch(frame, context->offset);
     }
 }
 
-void ifne_exe(union Context *context, struct Frame *frame) {
-    int v = popInt(frame->operand_stack);
+void ifne_exe(union Context *context, Frame frame) {
+    int v = Frame_popInt(frame);
     if (v != 0) {
         branch(frame, context->offset);
     }
 }
 
-void iflt_exe(union Context *context, struct Frame *frame) {
-    int v = popInt(frame->operand_stack);
+void iflt_exe(union Context *context, Frame frame) {
+    int v = Frame_popInt(frame);
     if (v < 0) {
         branch(frame, context->offset);
     }
 }
 
-void ifge_exe(union Context *context, struct Frame *frame) {
-    int v = popInt(frame->operand_stack);
+void ifge_exe(union Context *context, Frame frame) {
+    int v = Frame_popInt(frame);
     if (v >= 0) {
         branch(frame, context->offset);
     }
 }
 
-void ifgt_exe(union Context *context, struct Frame *frame) {
-    int v = popInt(frame->operand_stack);
+void ifgt_exe(union Context *context, Frame frame) {
+    int v = Frame_popInt(frame);
     if (v > 0) {
         branch(frame, context->offset);
     }
 }
 
-void ifle_exe(union Context *context, struct Frame *frame) {
-    int v = popInt(frame->operand_stack);
+void ifle_exe(union Context *context, Frame frame) {
+    int v = Frame_popInt(frame);
     if (v <= 0) {
         branch(frame, context->offset);
     }
 }
 
-void if_icmpeq_exe(union Context *context, struct Frame *frame) {
-    int v2 = popInt(frame->operand_stack);
-    int v1 = popInt(frame->operand_stack);
+void if_icmpeq_exe(union Context *context, Frame frame) {
+    int v2 = Frame_popInt(frame);
+    int v1 = Frame_popInt(frame);
     if (v2 == v1) {
         branch(frame, context->offset);
     }
 }
 
-void if_icmpne_exe(union Context *context, struct Frame *frame) {
-    int v2 = popInt(frame->operand_stack);
-    int v1 = popInt(frame->operand_stack);
+void if_icmpne_exe(union Context *context, Frame frame) {
+    int v2 = Frame_popInt(frame);
+    int v1 = Frame_popInt(frame);
     if (v2 != v1) {
         branch(frame, context->offset);
     }
 }
 
-void if_icmplt_exe(union Context *context, struct Frame *frame) {
-    int v2 = popInt(frame->operand_stack);
-    int v1 = popInt(frame->operand_stack);
+void if_icmplt_exe(union Context *context, Frame frame) {
+    int v2 = Frame_popInt(frame);
+    int v1 = Frame_popInt(frame);
     if (v2 < v1) {
         branch(frame, context->offset);
     }
 
 }
 
-void if_icmpge_exe(union Context *context, struct Frame *frame) {
-    int v2 = popInt(frame->operand_stack);
-    int v1 = popInt(frame->operand_stack);
+void if_icmpge_exe(union Context *context, Frame frame) {
+    int v2 = Frame_popInt(frame);
+    int v1 = Frame_popInt(frame);
     if (v2 >= v1) {
         branch(frame, context->offset);
     }
 
 }
 
-void if_icmpgt_exe(union Context *context, struct Frame *frame) {
-    int v2 = popInt(frame->operand_stack);
-    int v1 = popInt(frame->operand_stack);
+void if_icmpgt_exe(union Context *context, Frame frame) {
+    int v2 = Frame_popInt(frame);
+    int v1 = Frame_popInt(frame);
     if (v2 > v1) {
         branch(frame, context->offset);
     }
 
 }
 
-void if_icmple_exe(union Context *context, struct Frame *frame) {
-    int v2 = popInt(frame->operand_stack);
-    int v1 = popInt(frame->operand_stack);
+void if_icmple_exe(union Context *context, Frame frame) {
+    int v2 = Frame_popInt(frame);
+    int v1 = Frame_popInt(frame);
     if (v2 <= v1) {
         branch(frame, context->offset);
     }
 
 }
 
-void if_acmpeq_exe(union Context *context, struct Frame *frame) {
-    struct Object *v2 = popRef(frame->operand_stack);
-    struct Object *v1 = popRef(frame->operand_stack);
+void if_acmpeq_exe(union Context *context, Frame frame) {
+    Object v2 = Frame_popRef(frame);
+    Object v1 = Frame_popRef(frame);
     if (v2 != v1) {
         branch(frame, context->offset);
     }
 }
 
-void if_acmpne_exe(union Context *context, struct Frame *frame) {
-    struct Object *v2 = popRef(frame->operand_stack);
-    struct Object *v1 = popRef(frame->operand_stack);
+void if_acmpne_exe(union Context *context, Frame frame) {
+    Object v2 = Frame_popRef(frame);
+    Object v1 = Frame_popRef(frame);
     if (v2 != v1) {
         branch(frame, context->offset);
     }
 }
 
-void goto_exe(union Context *context, struct Frame *frame) {
+void goto_exe(union Context *context, Frame frame) {
     branch(frame, context->offset);
 }
 
-void jsr_exe(union Context *context, struct Frame *frame) {
+void jsr_exe(union Context *context, Frame frame) {
 
 }
 
-void ret_exe(union Context *context, struct Frame *frame) {
+void ret_exe(union Context *context, Frame frame) {
 
 }
 
-void tableswitch_exe(union Context *context, struct Frame *frame) {
+void tableswitch_exe(union Context *context, Frame frame) {
 
 }
 
-void lookupswitch_exe(union Context *context, struct Frame *frame) {
+void lookupswitch_exe(union Context *context, Frame frame) {
 
 }
 
-void ireturn_exe(union Context *context, struct Frame *frame) {
+void ireturn_exe(union Context *context, Frame frame) {
     struct Thread *thread = frame->thread;
     struct Frame *current_frame = popFrame(thread);
     struct Frame *invoker_frame = topFrame(thread);
-    int value = popInt(current_frame->operand_stack);
-    pushInt(value, invoker_frame->operand_stack);
+    int value = Frame_popInt(current_frame);
+    Frame_pushInt(invoker_frame, value);
 }
 
-void lreturn_exe(union Context *context, struct Frame *frame) {
+void lreturn_exe(union Context *context, Frame frame) {
     struct Thread *thread = frame->thread;
     struct Frame *current_frame = popFrame(thread);
     struct Frame *invoker_frame = topFrame(thread);
-    long value = popLong(current_frame->operand_stack);
-    pushLong(value, invoker_frame->operand_stack);
+    long value = Frame_popLong(current_frame);
+    Frame_pushLong(invoker_frame, value);
 }
 
-void freturn_exe(union Context *context, struct Frame *frame) {
+void freturn_exe(union Context *context, Frame frame) {
     struct Thread *thread = frame->thread;
     struct Frame *current_frame = popFrame(thread);
     struct Frame *invoker_frame = topFrame(thread);
-    float value = popFloat(current_frame->operand_stack);
-    pushFloat(value, invoker_frame->operand_stack);
+    float value = Frame_popFloat(current_frame);
+    Frame_pushFloat(invoker_frame, value);
 
 }
 
-void dreturn_exe(union Context *context, struct Frame *frame) {
+void dreturn_exe(union Context *context, Frame frame) {
     struct Thread *thread = frame->thread;
     struct Frame *current_frame = popFrame(thread);
     struct Frame *invoker_frame = topFrame(thread);
-    double value = popDouble(current_frame->operand_stack);
-    pushDouble(value, invoker_frame->operand_stack);
+    double value = Frame_popDouble(current_frame);
+    Frame_pushDouble(invoker_frame, value);
 }
 
-void areturn_exe(union Context *context, struct Frame *frame) {
+void areturn_exe(union Context *context, Frame frame) {
     struct Thread *thread = frame->thread;
     struct Frame *current_frame = popFrame(thread);
     struct Frame *invoker_frame = topFrame(thread);
-    struct Object *value = popRef(current_frame->operand_stack);
-    pushRef(value, invoker_frame->operand_stack);
+    struct Object *value = Frame_popRef(current_frame);
+    Frame_pushRef(invoker_frame, value);
 }
 
-void return_exe(union Context *context, struct Frame *frame) {
+void return_exe(union Context *context, Frame frame) {
     popFrame(frame->thread);
 }
 
-void getstatic_exe(union Context *context, struct Frame *frame) {
-    struct FieldRef *field_ref = frame->method->_class->constant_pool->constants[context->index].field_ref;
-    struct Class *_class = field_ref->_class;
-    struct Field *field = resolvedField(field_ref);
+void getstatic_exe(union Context *context, Frame frame) {
+    Class current_class = Frame_currentClass(frame);
+    FieldRef field_ref = ConstantPool_fieldRef(current_class->constant_pool, context->index);
+    Class _class = FieldRef_class(field_ref);
+    Field field = FieldRef_resolvedField(field_ref);
     // TODO
 
-    if (!isStatic(field->access_flags)) {
+    if (!Field_isStatic(field)) {
         printf("java.lang.IncompatibleClassChangeError");
     }
 
     u4 slot_id = field->slot_id;
-    struct OperandStack *stack = frame->operand_stack;
-    struct Slots *slots = _class->static_vars;
+    Slots slots = _class->static_vars;
 
     switch (field->descriptor[0]) {
         case 'Z':
@@ -1019,33 +1034,33 @@ void getstatic_exe(union Context *context, struct Frame *frame) {
         case 'C':
         case 'S':
         case 'I':
-            pushInt(getInt(slot_id, slots), stack);
+            Frame_pushInt(frame, getInt(slot_id, slots));
             break;
         case 'F':
-            pushFloat(getFloat(slot_id, slots), stack);
+            Frame_pushFloat(frame, getFloat(slot_id, slots));
             break;
         case 'J':
-            pushLong(getLong(slot_id, slots), stack);
+            Frame_pushLong(frame, getLong(slot_id, slots));
             break;
         case 'D':
-            pushDouble(getDouble(slot_id, slots), stack);
+            Frame_pushDouble(frame, getDouble(slot_id, slots));
             break;
         case 'L':
         case '[':
-            pushRef(getRef(slot_id, slots), stack);
+            Frame_pushRef(frame, getRef(slot_id, slots));
             break;
         default:
             break;
     }
 }
 
-void putstatic_exe(union Context *context, struct Frame *frame) {
-    struct Method *current_method = frame->method;
+void putstatic_exe(union Context *context, Frame frame) {
+    struct Method *current_method = Frame_currentMethod(frame);
     current_method->_class->constant_pool;
-    struct Class *current_class = current_method->_class;
-    struct FieldRef *field_ref = current_class->constant_pool->constants[context->index].field_ref;
-    struct Field *field = resolvedField(field_ref);
-    struct Class *_class = field->_class;
+    Class current_class = current_method->_class;
+    struct FieldRef *field_ref = ConstantPool_fieldRef(current_class->constant_pool, context->index);
+    Field field = FieldRef_resolvedField(field_ref);
+    Class _class = field->_class;
 
     if (_class->init_started == 0) {
         revertNextPC(frame);
@@ -1055,19 +1070,19 @@ void putstatic_exe(union Context *context, struct Frame *frame) {
 
     // TODO
 
-    if (!isStatic(field->access_flags)) {
+    if (!Field_isStatic(field)) {
         printf("java.lang.IncompatibleClassChangeError");
     }
 
-    if (isFinal(field->access_flags)) {
+    if (Field_isFinal(field)) {
         if (current_class != _class || strcmp(current_method->name, "<clinit>") == 1) {
             printf("java.lang.IllegalAccessError");
         }
     }
 
     u4 slot_id = field->slot_id;
-    struct OperandStack *stack = frame->operand_stack;
-    struct Slots *slots = _class->static_vars;
+    OperandStack stack = frame->operand_stack;
+    Slots slots = _class->static_vars;
 
     switch (field->descriptor[0]) {
         case 'Z':
@@ -1075,7 +1090,7 @@ void putstatic_exe(union Context *context, struct Frame *frame) {
         case 'C':
         case 'S':
         case 'I':
-            setInt(slot_id, popInt(stack), slots);
+            setInt(slot_id, Frame_popInt(frame), slots);
             break;
         case 'F':
             setFloat(slot_id, popFloat(stack), slots);
@@ -1095,12 +1110,12 @@ void putstatic_exe(union Context *context, struct Frame *frame) {
     }
 }
 
-void getfield_exe(union Context *context, struct Frame *frame) {
-    struct Method *current_method = frame->method;
-    struct Class *current_class = current_method->_class;
-    struct FieldRef *field_ref = current_class->constant_pool->constants[context->index].field_ref;
-    struct Field *field = resolvedField(field_ref);
-    struct Class *_class = field->_class;
+void getfield_exe(union Context *context, Frame frame) {
+    Method current_method = frame->method;
+    Class current_class = current_method->_class;
+    FieldRef field_ref = ConstantPool_fieldRef(current_class->constant_pool, context->index);
+    Field field = FieldRef_resolvedField(field_ref);
+    Class _class = field->_class;
 
     // TODO
 
@@ -1148,26 +1163,25 @@ void getfield_exe(union Context *context, struct Frame *frame) {
     }
 }
 
-void putfield_exe(union Context *context, struct Frame *frame) {
-    struct Method *current_method = frame->method;
-    struct Class *current_class = current_method->_class;
-    struct FieldRef *field_ref = current_class->constant_pool->constants[context->index].field_ref;
-    struct Field *field = resolvedField(field_ref);
+void putfield_exe(union Context *context, Frame frame) {
+    Method current_method = Frame_currentMethod(frame);
+    struct Class *current_class = Frame_currentClass(frame);
+    struct FieldRef *field_ref = ConstantPool_fieldRef(current_class->constant_pool, context->index);
+    struct Field *field = FieldRef_resolvedField(field_ref);
     struct Class *_class = field->_class;
     // TODO
 
-    if (isStatic(field->access_flags)) {
+    if (Field_isStatic(field)) {
         printf("java.lang.IncompatibleClassChangeError");
     }
 
-    if (isFinal(field->access_flags)) {
-        if (current_class != _class || strcmp(current_method->name, "<init>") == 1) {
+    if (Field_isFinal(field)) {
+        if (current_class != _class || Method_namecmp(current_method, "<init>") == 1) {
             printf("java.lang.IllegalAccessError");
         }
     }
 
     u4 slot_id = field->slot_id;
-    struct OperandStack *stack = frame->operand_stack;
 
     switch (field->descriptor[0]) {
         case 'Z':
@@ -1175,54 +1189,54 @@ void putfield_exe(union Context *context, struct Frame *frame) {
         case 'C':
         case 'S':
         case 'I': {
-            int value = popInt(stack);
-            struct Object *ref = popRef(stack);
+            int value = Frame_popInt(frame);
+            Object ref = Frame_popRef(frame);
             if (ref == NULL) {
                 printf("java.lang.NullPointerException");
             }
 
-            setInt(slot_id, value, ref->fields);
+            Object_setInt(ref, slot_id, value);
             break;
         }
         case 'F': {
-            float value = popFloat(stack);
-            struct Object *ref = popRef(stack);
+            float value = Frame_popFloat(frame);
+            Object ref = Frame_popRef(frame);
             if (ref == NULL) {
                 printf("java.lang.NullPointerException");
             }
 
-            setFloat(slot_id, value, ref->fields);
+            Object_setFloat(ref, slot_id, value);
             break;
         }
         case 'J': {
-            long value = popLong(stack);
-            struct Object *ref = popRef(stack);
+            long value = Frame_popLong(frame);
+            Object ref = Frame_popRef(frame);
             if (ref == NULL) {
                 printf("java.lang.NullPointerException");
             }
 
-            setLong(slot_id, value, ref->fields);
+            Object_setLong(ref, slot_id, value);
             break;
         }
         case 'D': {
-            double d = popDouble(stack);
-            struct Object *ref = popRef(stack);
+            double d = Frame_popDouble(frame);
+            Object ref = Frame_popRef(frame);
             if (ref == NULL) {
                 printf("java.lang.NullPointerException\n");
             }
 
-            setDouble(slot_id, d, ref->fields);
+            Object_setDouble(ref, slot_id, d);
             break;
         }
         case 'L':
         case '[': {
-            struct Object *value = popRef(stack);
-            struct Object *ref = popRef(stack);
+            Object value = Frame_popRef(frame);
+            Object ref = Frame_popRef(frame);
             if (ref == NULL) {
                 printf("java.lang.NullPointerException");
             }
 
-            setRef(slot_id, value, ref->fields);
+            Object_setRef(ref, slot_id, value);
             break;
         }
         default:
@@ -1230,32 +1244,29 @@ void putfield_exe(union Context *context, struct Frame *frame) {
     }
 }
 
-struct Object *getRefFromStackTop(struct OperandStack *stack, u4 i) {
-    return stack->slot[stack->size - 1 - i].ref;
-}
 
-void invokevirtual_exe(union Context *context, struct Frame *frame) {
-    struct Class *current_class = frame->method->_class;
+void invokevirtual_exe(union Context *context, Frame frame) {
+    Class current_class = ((Method)Frame_method(frame))->_class;
     struct ConstantPool *constant_pool = current_class->constant_pool;
-    struct MethodRef *method_ref = constant_pool->constants[context->index].method_ref;
+    MethodRef method_ref = ConstantPool_methodRef(current_class->constant_pool, context->index);
 
-    struct Method *resolved_method = resolvedMethod(method_ref);
+    Method resolved_method = MethodRef_resolvedMethod(method_ref);
 
-    if (isStatic(resolved_method->access_flags)) {
+    if (Method_isStatic(resolved_method)) {
         printf("java.lang.IncompatibleClassChangeError");
     }
 
-    struct Object *ref = getRefFromStackTop(frame->operand_stack, resolved_method->arg_count - 1);
+    struct Object *ref = getRefFromStackTop(frame->operand_stack, Method_argCount(resolved_method) - 1);
     if (ref == NULL) {
-        if (strcmp(method_ref->name, "println") == 0) {
+        if (strcmp(MethodRef_name(method_ref), "println") == 0) {
             // TODO
-            _println(frame->operand_stack, method_ref->descriptor);
+            _println(frame->operand_stack, MethodRef_descriptor(method_ref));
         } else {
             printf("java.lang.NullPointerException");
         }
     }
 
-    if (isProtected(resolved_method->access_flags) &&
+    if (Method_isProtected(resolved_method) &&
         Class_isSuperClassOf(resolved_method->_class, current_class) &&
         strcmp(Class_packageName(resolved_method->_class), Class_packageName(current_class)) != 0 &&
         ref->_class != current_class &&
@@ -1264,7 +1275,7 @@ void invokevirtual_exe(union Context *context, struct Frame *frame) {
         printf("java.lang.IllegalAccessError");
     }
 
-    struct Method *invoke_method = lookupMethodInClass(ref->_class, method_ref->name, method_ref->descriptor);
+    Method invoke_method = Class_lookupMethodInClass(ref->_class, MethodRef_name(method_ref), MethodRef_descriptor(method_ref));
 
     if (invoke_method == NULL || isAbstract(invoke_method->access_flags)) {
         printf("java.lang.AbstractMethodError");
@@ -1274,27 +1285,25 @@ void invokevirtual_exe(union Context *context, struct Frame *frame) {
 
 }
 
-void invokespecial_exe(union Context *context, struct Frame *frame) {
-    struct Class *current_class = frame->method->_class;
-    struct MethodRef *method_ref = current_class->constant_pool->constants[context->index].method_ref;
-    struct Class *resolved_class;
+void invokespecial_exe(union Context *context, Frame frame) {
+    Class current_class = ((Method)Frame_method(frame))->_class;
+    MethodRef method_ref = ConstantPool_methodRef(current_class->constant_pool, context->index);
+    Class resolved_class = MethodRef_resolvedClass(method_ref);
 
-    resolvedClass(method_ref, resolved_class);
+    Method resolved_method = MethodRef_resolvedMethod(method_ref);
 
-    struct Method *resolved_method = resolvedMethod(method_ref);
-
-    if (strcmp(resolved_method->name == "<init>") == 0 && resolved_method->_class != resolved_class) {
+    if (Method_namecmp(resolved_method, "<init>") == 0 && resolved_method->_class != resolved_class) {
         printf("java.lang.NoSuchMethodError");
     }
 
-    if (isStatic(resolved_method->access_flags)) {
+    if (Method_isStatic(resolved_method)) {
         printf("java.lang.IncompatibleClassChangeError");
     }
 
     struct OperandStack *stack = frame->operand_stack;
 
     // get ref from top
-    struct Object *ref = getRefFromStackTop(stack, resolved_method->arg_count);
+    Object ref = getRefFromStackTop(stack, resolved_method->arg_count);
     if (ref == NULL) {
         printf("java.lang.NullPointerException");
     }
@@ -1308,11 +1317,11 @@ void invokespecial_exe(union Context *context, struct Frame *frame) {
         printf("java.lang.IllegalAccessError");
     }
 
-    struct Method *invoke_method = resolved_method;
+    Method invoke_method = resolved_method;
     if (isSuper(current_class->access_flags) &&
         Class_isSuperClassOf(resolved_class, current_class) &&
         strcmp(resolved_method->name, "<init>") != 0) {
-        invoke_method = lookupMethodInClass(current_class->super_class, method_ref->name, method_ref->descriptor);
+        invoke_method = MethodRef_lookupMethodInClass(method_ref, current_class->super_class);
     }
 
     if (invoke_method == NULL || isAbstract(invoke_method->access_flags)) {
@@ -1321,6 +1330,9 @@ void invokespecial_exe(union Context *context, struct Frame *frame) {
 
     invokeMethod(frame, invoke_method);
 }
+
+
+
 
 void _println(struct OperandStack *stack, char *descriptor) {
     if (strcmp(descriptor, "(Z)V") == 0) {
@@ -1346,11 +1358,11 @@ void _println(struct OperandStack *stack, char *descriptor) {
     popRef(stack);
 }
 
-void invokestatic_exe(union Context *context, struct Frame *frame) {
-    struct Method *method = frame->method;
-    struct ConstantPool *constant_pool = method->_class->constant_pool;
-    struct MethodRef *method_ref = constant_pool->constants[context->index].method_ref;
-    struct Method *resolved_method = resolvedMethod(method_ref);
+void invokestatic_exe(union Context *context, Frame frame) {
+    Method method = frame->method;
+    ConstantPool constant_pool = method->_class->constant_pool;
+    MethodRef method_ref = ConstantPool_methodRef(constant_pool, context->index);
+    Method resolved_method = MethodRef_resolvedMethod(method_ref);
 
     if (!isStatic(resolved_method->access_flags)) {
         printf("java.lang.IncompatibleClassChangeError");
@@ -1363,7 +1375,6 @@ void invokestatic_exe(union Context *context, struct Frame *frame) {
     }
 
     invokeMethod(frame, resolved_method);
-
 }
 
 void invokeinterface_fetchOp(union Context *context, struct Bytecode *data) {
@@ -1372,27 +1383,25 @@ void invokeinterface_fetchOp(union Context *context, struct Bytecode *data) {
     readBytecodeU1(data);       // must be 0
 }
 
-void invokeinterface_exe(union Context *context, struct Frame *frame) {
-    struct ConstantPool *constant_pool = frame->method->_class->constant_pool;
-    struct InterfaceMethodRef *interface_method_ref = &constant_pool->constants[context->index].interface_method_ref;
-    struct Method *resolved_method = resolvedInterfaceMethod(interface_method_ref);
-    if (isStatic(resolved_method->access_flags) || isPrivate(resolved_method->access_flags)) {
+void invokeinterface_exe(union Context *context, Frame frame) {
+    struct ConstantPool *constant_pool = ((Method)Frame_method(frame))->_class->constant_pool;
+    InterfaceMethodRef interface_method_ref = ConstantPool_interfaceMethodRef(constant_pool, context->index);
+    Method resolved_method = InterfaceMethodRef_resolvedInterfaceMethod(interface_method_ref);
+    if (Method_isStatic(resolved_method) || Method_isPrivate(resolved_method)) {
         printf("java.lang.IncompatibleClassChangeError");
     }
 
-    struct Object *ref = getRefFromStackTop(frame->operand_stack, resolved_method->arg_count - 1);
+    Object ref = getRefFromStackTop(frame->operand_stack, resolved_method->arg_count - 1);
     if (ref == NULL) {
         printf("java.lang.NullPointerException");
     }
 
-    struct Class *method_class;
-    resolvedClass(interface_method_ref, method_class);
+    Class method_class = InterfaceMethodRef_resolvedClass(interface_method_ref);
     if (!Class_isImplements(ref->_class, method_class)) {
         printf("java.lang.IncompatibleClassChangeError");
     }
 
-    struct Method *invoke_method = lookupMethodInClass(ref->_class, interface_method_ref->name,
-                                                       interface_method_ref->descriptor);
+    Method invoke_method = InterfaceMethodRef_lookupMethodInClass(interface_method_ref, ref->_class);
     if (invoke_method == NULL || isAbstract(invoke_method->access_flags)) {
         printf("java.lang.AbstractMethodError");
     }
@@ -1404,15 +1413,14 @@ void invokeinterface_exe(union Context *context, struct Frame *frame) {
     invokeMethod(frame, invoke_method);
 }
 
-void invokedynamic_exe(union Context *context, struct Frame *frame) {
+void invokedynamic_exe(union Context *context, Frame frame) {
 
 }
 
-void new_exe(union Context *context, struct Frame *frame) {
-    struct ClassRef *class_ref = frame->method->_class->constant_pool->constants[context->index].class_ref;
+void new_exe(union Context *context, Frame frame) {
+    ClassRef class_ref = ConstantPool_classRef(((Method)Frame_method(frame))->_class->constant_pool, context->index);
     // TODO free?
-    struct Class *_class = (struct Class *) malloc(sizeof(struct Class));
-    resolvedClass(class_ref, _class);
+    Class _class = ClassRef_resolvedClass(class_ref);
 
     if (_class->init_started == 0) {
         revertNextPC(frame);
@@ -1426,24 +1434,23 @@ void new_exe(union Context *context, struct Frame *frame) {
 
     struct Object *ref = newObject(_class);
 
-    pushRef(ref, frame->operand_stack);
+    Frame_pushRef(frame, ref);
 }
 
 void newarray_fetchOp(union Context *context, struct Bytecode *data) {
     context->atype = readBytecodeU2(data);
 }
 
-void newarray_exe(union Context *context, struct Frame *frame) {
-    struct OperandStack *stack = frame->operand_stack;
-    int count = popInt(stack);
+void newarray_exe(union Context *context, Frame frame) {
+    int count = Frame_popInt(frame);
     if (count < 0) {
         printf("java.lang.NegativeArraySizeException\n");
     }
 
-    struct ClassLoader *loader = frame->method->_class->loader;
+    struct ClassLoader *loader = ((Method)Frame_method(frame))->_class->loader;
     struct Class *array_class = getPrimitiveArrayClass(loader, context->atype);
-    struct Object *array = Class_newArray(array_class, count);
-    pushRef(array, stack);
+    struct Object *array = newArray(array_class, count);
+    Frame_pushRef(frame, array);
 }
 
 struct Class *getPrimitiveArrayClass(struct ClassLoader *loader, unsigned int atype) {
@@ -1469,32 +1476,66 @@ struct Class *getPrimitiveArrayClass(struct ClassLoader *loader, unsigned int at
     }
 }
 
-void anewarray_exe(union Context *context, struct Frame *frame) {
-    struct ClassRef *class_ref = frame->method->_class->constant_pool->constants[context->index].class_ref;
-    resolveClassRef(class_ref);
-    int count = popInt(frame->operand_stack);
+void anewarray_exe(union Context *context, Frame frame) {
+    ClassRef class_ref = ConstantPool_classRef(((Method)Frame_method(frame))->_class->constant_pool, context->index);
+    ClassRef_resolveClassRef(class_ref);
+    int count = Frame_popInt(frame);
     if (count < 0) {
         printf("java.lang.NegativeArraySizeException\n");
     }
 
-    struct Class *array_class = Class_arrayClass(class_ref->_class);
-    struct Object *array = Class_newArray(array_class, count);
+    Class array_class = arrayClass(ClassRef_class(class_ref));
+    Object array = newArray(array_class, count);
     pushRef(array, frame->operand_stack);
 }
 
-void arraylength_exe(union Context *context, struct Frame *frame) {
+
+static char *getArrayClassName(char *class_name) {
+    if (class_name[0] == '[') {
+        return strcat("[", class_name);
+    }
+
+    if (strcmp("void", class_name) == 0) {
+        return "[V";
+    } else if (strcmp("boolean", class_name) == 0) {
+        return "[Z";
+    } else if (strcmp("byte", class_name) == 0) {
+        return "[B";
+    } else if (strcmp("char", class_name) == 0) {
+        return "[C";
+    } else if (strcmp("short", class_name) == 0) {
+        return "[S";
+    } else if (strcmp("int", class_name) == 0) {
+        return "[I";
+    } else if (strcmp("long", class_name) == 0) {
+        return "[J";
+    } else if (strcmp("float", class_name) == 0) {
+        return "[F";
+    } else if (strcmp("double", class_name) == 0) {
+        return "[D";
+    }
+
+    return strcat(strcat("[L", class_name), ";");
+}
+
+Class arrayClass(Class _this) {
+    char *array_class_name = getArrayClassName(_this->name);
+    return ClassLoader_loadClass(_this->loader, array_class_name);
+}
+
+void arraylength_exe(union Context *context, Frame frame) {
     // TODO
 }
 
-void athrow_exe(union Context *context, struct Frame *frame) {
+void athrow_exe(union Context *context, Frame frame) {
 
 }
 
-void checkcast_exe(union Context *context, struct Frame *frame) {
+void checkcast_exe(union Context *context, Frame frame) {
 
 }
 
-void instanceof_exe(union Context *context, struct Frame *frame) {
+void instanceof_exe(union Context *context, Frame frame) {
     struct OperandStack *stack = frame->operand_stack;
     struct Object *ref = popRef(stack);
     if (ref == NULL) {
@@ -1502,52 +1543,52 @@ void instanceof_exe(union Context *context, struct Frame *frame) {
         return;
     }
 
-    struct ClassRef *class_ref = frame->method->_class->constant_pool->constants[context->index].class_ref;
+    ClassRef class_ref = ConstantPool_classRef(((Method)Frame_method(frame))->_class->constant_pool, context->index);
 
-    resolveClassRef(class_ref);
+    ClassRef_resolveClassRef(class_ref);
 
-    if (Object_isInterfaceOf(ref, class_ref->_class)) {
+    if (Object_isInterfaceOf(ref, ClassRef_class(class_ref))) {
         pushInt(1, stack);
     } else {
         pushInt(0, stack);
     }
 }
 
-void monitorenter_exe(union Context *context, struct Frame *frame) {
+void monitorenter_exe(union Context *context, Frame frame) {
 
 }
 
-void monitorexit_exe(union Context *context, struct Frame *frame) {
+void monitorexit_exe(union Context *context, Frame frame) {
 
 }
 
-void wide_exe(union Context *context, struct Frame *frame) {
+void wide_exe(union Context *context, Frame frame) {
 
 }
 
-void multianewarray_exe(union Context *context, struct Frame *frame) {
+void multianewarray_exe(union Context *context, Frame frame) {
 
 }
 
-void ifnull_exe(union Context *context, struct Frame *frame) {
+void ifnull_exe(union Context *context, Frame frame) {
     struct Object *ref = popRef(frame->operand_stack);
     if (ref == NULL) {
         branch(frame, context->offset);
     }
 }
 
-void ifnonnull_exe(union Context *context, struct Frame *frame) {
+void ifnonnull_exe(union Context *context, Frame frame) {
     struct Object *ref = popRef(frame->operand_stack);
     if (ref != NULL) {
         branch(frame, context->offset);
     }
 }
 
-void goto_w_exe(union Context *context, struct Frame *frame) {
+void goto_w_exe(union Context *context, Frame frame) {
 
 }
 
-void jsr_w_exe(union Context *context, struct Frame *frame) {
+void jsr_w_exe(union Context *context, Frame frame) {
 
 }
 
@@ -1969,6 +2010,57 @@ struct Instruction newInstruction(u1 opcode) {
     }
 }
 
-void revertNextPC(struct Frame *frame) {
+void revertNextPC(Frame frame) {
     frame->nextPC = frame->thread->pc;
+}
+
+
+Object newObject(Class _class) {
+    Object object = (Object) malloc(sizeof(struct Object));
+    object->_class = _class;
+    object->fields = newSlots(_class->interface_slot_count);
+    // TODO
+    return NULL;
+}
+
+int Object_isInterfaceOf(Object _this, Class _other) {
+    Class s = _this->_class;
+    Class t = _other;
+
+    if (s == t) {
+        return 1;
+    }
+
+    if (isInterface(s)) {
+        if (isInterface(t)) {
+            return s == t || Class_isSubInterfaceOf(s, t);
+        } else {
+            return strcmp(t->name, "java/lang/Object") == 0;
+        }
+    } else {
+        if (isInterface(t)) {
+            return Class_isImplements(s, t);
+        } else {
+            return s == t || Class_isSubClassOf(s, t);
+        }
+    }
+}
+
+
+void initSuperClass(Thread thread, Class _class) {
+
+}
+
+void scheduleClinit(Thread thread, Class _class) {
+    Method clinit = Class_getClinitMethod(_class);
+    if (clinit != NULL) {
+        struct Frame *frame = newFrame(thread, clinit);
+        pushFrame(frame, thread);
+    }
+}
+
+void initClass(Thread thread, Class _class) {
+    _class->init_started = 1;
+    scheduleClinit(thread, _class);
+    initSuperClass(thread, _class);
 }

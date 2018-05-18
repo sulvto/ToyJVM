@@ -8,10 +8,11 @@
 #include "type.h"
 #include "rtda.h"
 #include "bytecode.h"
+#include "class.h"
 
-void interpret(struct Method *main);
+void interpret(Method main);
 
-void invokeMethod(struct Frame *invokerFrame, struct Method *method);
+void invokeMethod(Frame invokerFrame, Method method);
 
 
 #endif //TOYJVM_INTERPRETER_H

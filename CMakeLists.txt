@@ -5,7 +5,7 @@ PROJECT(ToyJVM)
 SET(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -g")
 
-ADD_EXECUTABLE(ToyJVM main.c map.c rtda.c bytecode.c classloader.c classreader.c array.c class.c instruction.c interpreter.c)
+ADD_EXECUTABLE(ToyJVM map.c rtda.c bytecode.c class.c array.c constantpool.c classref.c classloader.c classreader.c instruction.c interpreter.c main.c)
 
 FIND_PACKAGE(libzip REQUIRED)
 MARK_AS_ADVANCED(

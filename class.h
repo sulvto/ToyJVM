@@ -6,163 +6,97 @@
 #define TOYJVM_CLASS_H
 
 #include "type.h"
+#include "map.h"
 #include "rtda.h"
 #include "classreader.h"
-#include "map.h"
 
-struct Field {
-    u2      access_flags;
-    char    *name;
-    char    *descriptor;
-    u4      slot_id;
-    u2      const_value_index;
-    struct Class *_class;
-};
+#define Field_T Field
+typedef struct Field_T *Field;
 
+#define Method_T Method
+typedef struct Method_T *Method;
 
-struct Method {
-    u2      access_flags;
-    char    *name;
-    char    *descriptor;
-    u4      max_stack;
-    u4      max_locals;
-    u4      code_length;
-    u1      *code;
-    struct Class *_class;
-    u4      arg_count;
-};
-
-struct Class {
-    u2                      access_flags;
-    char                    *name;
-    char                    *super_class_name;
-    char                    **interface_name;
-    u2                      constant_pool_count;
-    struct ConstantPool     *constant_pool;
-    u2                      fields_count;
-    struct Field            *fields;
-    u2                      methods_count;
-    struct Method           *methods;
-    struct ClassLoader      *loader;
-    struct Class            *super_class;
-    u2                      interface_count;
-    struct Class            **interface_class;
-    u4                      interface_slot_count;
-    u4                      static_slot_count;
-    struct Slots            *static_vars;
-
-    // bool, 0 or 1
-    u2                      init_started;
-};
-
-struct ClassLoader {
-    // Map_T<char *, Class>
-    Map_T class_map;
-};
-
-struct ClassRef {
-    struct ConstantPool *constant_pool;
-    struct Class        *_class;
-    char                *class_name;
-};
-
-struct MethodRef {
-    struct ConstantPool *constant_pool;
-    struct Class        *_class;
-    char                *class_name;
-    struct Method       *method;
-    char                *name;
-    char                *descriptor;
-};
-
-struct FieldRef {
-    struct ConstantPool *constant_pool;
-    struct Class        *_class;
-    char                *class_name;
-    struct Field        *field;
-    char                *name;
-    char                *descriptor;
-};
-
-struct InterfaceMethodRef {
-    struct ConstantPool *constant_pool;
-    struct Class        *_class;
-    char                *class_name;
-    struct Method       *method;
-    char                *name;
-    char                *descriptor;
-};
-
-union Constant {
-    int                         int_value;
-    long                        long_value;
-    float                       float_value;
-    double                      double_value;
-    char                        *string;
-    struct MethodRef            *method_ref;
-    struct ClassRef             *class_ref;
-    struct FieldRef             *field_ref;
-    struct InterfaceMethodRef   *interface_method_ref;
-};
-
-struct ConstantPool {
-    struct Class    *_class;
-    u2              size;
-    union Constant *constants;
-};
-
-struct ClassLoader *ClassLoader_new();
-
-struct ClassLoader *ClassLoader_free(struct ClassLoader *);
-
-struct Class *ClassLoader_loadClass(struct ClassLoader *loader, const char *name);
-
-void initClass(struct Thread *, struct Class*);
-
-struct Object *newObject(struct Class *_class);
-
-int Object_isInterfaceOf(struct Object *_this, struct Class *_other);
-
-int Class_isSuperClassOf(struct Class *_this, struct Class *_other);
-
-int Class_isImplements(struct Class *_this, struct Class *_other);
-
-char *Class_packageName(struct Class *_this);
-
-int Class_isArray(struct Class *_this);
-
-Object *Class_newArray(struct Class *_this, const unsigned int count);
-
-struct Class *Class_arrayClass(struct Class *_this);
+#define Class_T Class
+typedef struct Class_T *Class;
 
 
+Class_T Class_new(struct ClassFile *class_file);
+
+Method_T Class_lookupInterfaceMethod(Class_T _class, char *name, char *descriptor);
+
+void *Class_loader(Class_T);
+
+int Class_isSuperClassOf(Class_T _this, Class_T _other);
+
+int Class_isImplements(Class_T _this, Class_T _other);
+
+char *Class_packageName(Class_T _this);
+
+int Class_isArray(Class_T _this);
+
+Method_T Class_getClinitMethod(Class_T _class);
+
+int Class_isAccessibleTo(Class_T _this, Class_T other);
+
+int Class_isSubInterfaceOf(Class_T _this, Class_T _other);
+
+int Class_isSubClassOf(Class_T _this, Class_T _other);
+
+Method_T Class_getMainMethod(Class_T _class);
+
+Method_T Class_lookupMethod(Class_T _class, char *name, char *descriptor);
+
+Field_T Class_lookupField(Class_T _class, char *name, char *descriptor);
+
+Class *Class_interface(Class_T _class);
+
+int Class_isInterface(Class_T);
+
+//Method_T resolvedInterfaceMethod(struct InterfaceMethodRef *interface_method_ref);
+//
+//Method_T resolvedMethod(struct MethodRef *method_ref);
+//
+//Field_T resolvedField(struct FieldRef *field_ref);
+
+Method_T Class_lookupMethodInClass(Class_T _class, char *name, char *descriptor);
+
+Method_T lookupMethodInInterfaces(Class_T *interfaces, u2 count, char *name, char *descriptor);
 
 
-struct Method *resolvedInterfaceMethod(struct InterfaceMethodRef *interface_method_ref);
+int Field_isPublic(Field_T _this);
 
-struct Method *resolvedMethod(struct MethodRef *method_ref);
+int Field_isPrivate(Field_T _this);
 
-struct Field *resolvedField(struct FieldRef *field_ref);
+int Field_isProtected(Field_T _this);
 
-struct Method *lookupMethodInClass(struct Class *_class, char *name, char *descriptor);
+int Field_isStatic(Field_T _this);
 
+int Field_isFinal(Field_T _this);
 
+int Field_isAccessibleTo(Field_T _this, Class_T other);
 
+int Method_isAccessibleTo(Method_T _this, Class_T _other);
 
-#define resolvedClass(ref, result)  \
-    if (ref->_class == NULL) {      \
-        resolveClassRef(ref);       \
-    }                               \
-    result = ref->_class;           \
+u4 Method_maxLocals(Method_T _this);
 
+u4 Method_maxStack(Method_T _this);
 
-#define resolveClassRef(ref)                                    \
-    struct Class *d = ref->constant_pool->_class;               \
-    struct Class *c = ClassLoader_loadClass(d->loader, ref->class_name);    \
-    if (Class_isAccessibleTo(c, d) == 0) {                              \
-        printf("java.lang.IllegalAccessError");                 \
-    }                                                           \
-    ref->_class = c;                                            \
+int Method_isPublic(Method_T _this);
 
+int Method_isPrivate(Method_T _this);
+
+int Method_isProtected(Method_T _this);
+
+int Method_isStatic(Method_T _this);
+
+int Method_namecmp(Method_T _this, const char *name);
+
+int Method_classcmp(Method_T _this, Class_T _class);
+
+int Method_argCount(Method_T _this);
+
+#undef Field_T
+#undef Method_T
+#undef Class_T
 
 #endif //TOYJVM_CLASS_H

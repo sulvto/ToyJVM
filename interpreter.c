@@ -2,40 +2,44 @@
 // Created by sulvto on 18-4-30.
 //
 
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include "type.h"
 #include "bytecode.h"
 #include "classreader.h"
 #include "rtda.h"
-#include "interpreter.h"
 #include "instruction.h"
-#include <stddef.h>
+#include "interpreter.h"
+#include "rtda.c"
+#include "class.c"
 
-void invokeMethod(struct Frame *invoker_frame, struct Method *method) {
-    struct Thread *thread = invoker_frame->thread;
-    struct Frame *new_frame = newFrame(thread, method);
+void invokeMethod(Frame invoker_frame, Method method) {
+    Thread thread = invoker_frame->thread;
+    Frame new_frame = newFrame(thread, method);
     pushFrame(new_frame, thread);
     if (method->arg_count > 0) {
         for (int i = method->arg_count - 1; i >= 0; --i) {
-            struct Slot slot = popSlot(invoker_frame->operand_stack);
+            Slot slot = popSlot(invoker_frame->operand_stack);
             setSlot(i, slot, new_frame->localVars);
         }
     }
 }
 
 
-void loop(struct Thread *thread) {
+void loop(Thread thread) {
 
     struct Bytecode *bytecode_data = (struct Bytecode *) malloc(sizeof(struct Bytecode));
 
 
     while (1) {
         // current frame
-        struct Frame *frame = topFrame(thread);
+        Frame frame = topFrame(thread);
 
         int pc = frame->nextPC;
         thread->pc = pc;
 
-        reset(frame->method->code, pc, bytecode_data);
+        reset(((Method)Frame_method(frame))->code, pc, bytecode_data);
         u1 opcode = readBytecodeU1(bytecode_data);
 
 
@@ -58,9 +62,9 @@ void loop(struct Thread *thread) {
     }
 }
 
-void interpret(struct Method *main_method) {
-    struct Thread *thread = newThread();
-    struct Frame *frame = newFrame(thread, main_method);
+void interpret(Method main_method) {
+    Thread thread = newThread();
+    Frame frame = newFrame(thread, main_method);
     pushFrame(frame, thread);
 
     loop(thread);

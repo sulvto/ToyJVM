@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <limits.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include "map.h"
 
 #define T Map_T
@@ -34,7 +35,7 @@ T Map_new(unsigned int hint,
           unsigned hash(const void *key)) {
 
     assert(hint >= 0);
-    static int primes[] = {509, 509, 1021, 2053, 4093,
+    static unsigned int primes[] = {509, 509, 1021, 2053, 4093,
                            8191, 16381, 32771, 65521, INT_MAX};
     int i;
     for (i = 1; primes[i] < hint; ++i) ;

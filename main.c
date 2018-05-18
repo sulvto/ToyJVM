@@ -3,12 +3,16 @@
 //
 
 
-#include "type.h"
-#include "classreader.h"
+#include <stdio.h>
+#include <string.h>
 #include "rtda.h"
+#include "type.h"
+#include "class.h"
+#include "classreader.h"
 #include "bytecode.h"
 #include "interpreter.h"
-#include <stdio.h>
+#include "map.h"
+#include "classloader.h"
 
 //
 //// options
@@ -56,24 +60,7 @@
 //	}
 //}
 
-struct MemberInfo *getMainMethod(const struct ClassFile *classFile)
-{
-
-	for (int i = 0; i < classFile->methods_count; ++i) {
-		struct MemberInfo *memberInfo = &classFile->methods[i];
-		char name[1024];
-
-		methodName(memberInfo, classFile->constant_pool, name);
-		if (strcmp("main", name) == 0) {
-			return memberInfo;
-		}
-	}
-
-	return NULL;
-}
-
-int main(int argc, char **argv) 
-{
+int main(int argc, char **argv) {
 //	static struct s_options options[] = {
 //		{HELP_FLAG, "help", null, "print help message", argv},
 //		{HELP_FLAG, "?", null, "print help message", argv},
@@ -84,16 +71,17 @@ int main(int argc, char **argv)
 //
 //	OptInit(argv, options, stderr);
 
-	struct s_class_data class_data = readClassFile("Test.class");
-	struct ClassFile class_file = parseClassContent(&class_data);
-	printClassInfo(&class_file);
+    ClassLoader loader = ClassLoader_new();
 
-	struct MemberInfo *mainMethod = getMainMethod(&class_file);
+    Class _class = ClassLoader_loadClass(loader, "Test.class");
 
-	if (mainMethod != NULL) {
-		interpret(mainMethod);
-	} else {
-		printf("Main method not found in class! \n");
-	}
+    Method mainMethod = Class_getMainMethod(_class);
+
+    printf("mainMethod != NULL\n");
+    if (mainMethod != NULL) {
+        interpret(mainMethod);
+    } else {
+        printf("Main method not found in class! \n");
+    }
 
 }

@@ -5,109 +5,163 @@
 #ifndef TOYJVM_RTDA_H
 #define TOYJVM_RTDA_H
 
-#include "class.h"
+#include "type.h"
 
-struct Object {
-    struct Class *_class;
-    struct Slots *fields;
-};
+#define Slot_T Slot
+typedef struct Slot_T *Slot;
 
-struct Slot {
-    int             num;
-    struct Object   *ref;
-};
+#define Slots_T Slots
+typedef struct Slots_T *Slots;
 
-struct Slots {
-    unsigned int size;
-    unsigned int max;
-    struct Slot *value;
-};
+#define Object_T Object
+typedef struct Object_T *Object;
 
-struct OperandStack {
-    unsigned int size;
-    struct Slot *slot;
-};
+#define OperandStack_T OperandStack
+typedef struct OperandStack_T *OperandStack;
 
-struct Frame {
-    struct Frame        *next;
-    struct Slots    *localVars;
-    struct OperandStack *operand_stack;
-    int                 nextPC;
-    struct Thread       *thread;
-    struct Method       *method;
-};
+#define Frame_T Frame
+typedef struct Frame_T *Frame;
 
-struct Stack {
-    unsigned int max_size;
-    unsigned int size;
-    struct Frame *top;
-};
+#define Stack_T Stack
+typedef struct Stack_T *Stack;
 
-struct Thread {
-    int          pc;
-    struct Stack *stack;
-};
+#define Thread_T Thread
+typedef struct Thread_T *Thread;
 
-struct Slots *newSlots(const unsigned int max);
+Slots_T newSlots(const unsigned int max);
 
-struct Thread *newThread();
+Thread_T newThread();
 
-struct Frame *newFrame(const struct Thread *thread, const struct Method *method);
+Frame_T newFrame(Thread_T thread, void *method);
 
-void pushFrame(struct Frame *frame, struct Thread *thread);
+void pushFrame(Frame_T frame, Thread_T thread);
 
-struct Frame *popFrame(struct Thread *thread);
+Frame_T popFrame(Thread_T thread);
 
-struct Frame *topFrame(struct Thread *thread);
+Frame_T topFrame(Thread_T thread);
+
+Object getRefFromStackTop(OperandStack_T stack, u4 i);
+
+void pushInt(const int, OperandStack_T);
+
+void pushLong(const long, OperandStack_T);
+
+void pushFloat(const float, OperandStack_T);
+
+void pushDouble(const double, OperandStack_T);
+
+void pushRef(const Object_T, OperandStack_T);
+
+void pushSlot(const Slot_T slot, OperandStack_T);
+
+int popInt(OperandStack_T);
+
+long popLong(OperandStack_T);
+
+float popFloat(OperandStack_T);
+
+double popDouble(OperandStack_T);
+
+Object_T popRef(OperandStack_T);
+
+Slot_T popSlot(OperandStack_T);
+
+void setInt(const unsigned int index, int value, Slots_T slots);
+
+void setLong(const unsigned int index, long value, Slots_T slots);
+
+void setFloat(const unsigned int index, float value, Slots_T slots);
+
+void setDouble(const unsigned int index, double value, Slots_T slots);
+
+void setRef(const unsigned int index, Object_T value, const Slots_T slots);
+
+void setSlot(const unsigned int index, Slot_T value, const Slots_T slots);
+
+int getInt(const unsigned int index, Slots_T slots);
+
+long getLong(const unsigned int index, Slots_T slots);
+
+float getFloat(const unsigned int index, Slots_T slots);
+
+double getDouble(const unsigned int index, Slots_T slots);
+
+Object_T getRef(const unsigned int index, Slots_T slots);
+
+Slot_T getSlot(const unsigned int index, const Slots_T slots);
 
 
-void pushInt(const int, struct OperandStack *);
+void Object_setInt(Object_T object, const unsigned int index, int value);
 
-void pushLong(const long, struct OperandStack *);
+void Object_setLong(Object_T object, const unsigned int index, long value);
 
-void pushFloat(const float, struct OperandStack *);
+void Object_setFloat(Object_T object, const unsigned int index, float value);
 
-void pushDouble(const double, struct OperandStack *);
+void Object_setDouble(Object_T object, const unsigned int index, double value);
 
-void pushRef(const struct Object *, struct OperandStack *);
+void Object_setRef(Object_T object, const unsigned int index, Object_T value);
 
-void pushSlot(const struct Slot slot, struct OperandStack *);
 
-int popInt(struct OperandStack *);
+void *Frame_currentClass(Frame_T frame);
 
-long popLong(struct OperandStack *);
+void *Frame_currentMethod(Frame_T frame);
 
-float popFloat(struct OperandStack *);
+void Frame_pushInt(Frame_T frame, const int);
 
-double popDouble(struct OperandStack *);
+void Frame_pushLong(Frame_T frame, const long);
 
-struct Object *popRef(struct OperandStack *);
+void Frame_pushFloat(Frame_T frame, const float);
 
-struct Slot popSlot(struct OperandStack *);
+void Frame_pushDouble(Frame_T frame, const double);
 
-void setInt(const unsigned int index, int value, struct Slots *slots);
+void Frame_pushRef(Frame_T frame, const Object_T);
 
-void setLong(const unsigned int index, long value, struct Slots *slots);
+void Frame_pushSlot(Frame_T frame, const Slot_T slot);
 
-void setFloat(const unsigned int index, float value, struct Slots *slots);
+int Frame_popInt(Frame_T frame);
 
-void setDouble(const unsigned int index, double value, struct Slots *slots);
+long Frame_popLong(Frame_T frame);
 
-void setRef(const unsigned int index, struct Object *value, const struct Slots *slots);
+float Frame_popFloat(Frame_T frame);
 
-void setSlot(const unsigned int index, struct Slot value, const struct Slots *slots);
+double Frame_popDouble(Frame_T frame);
 
-int getInt(const unsigned int index, struct Slots *slots);
+Object_T Frame_popRef(Frame_T frame);
 
-long getLong(const unsigned int index, struct Slots *slots);
+Slot_T Frame_popSlot(Frame_T frame);
 
-float getFloat(const unsigned int index, struct Slots *slots);
+void Frame_setInt(Frame_T frame, const unsigned int index, int value);
 
-double getDouble(const unsigned int index, struct Slots *slots);
+void Frame_setLong(Frame_T frame, const unsigned int index, long value);
 
-struct Object *getRef(const unsigned int index, struct Slots *slots);
+void Frame_setFloat(Frame_T frame, const unsigned int index, float value);
 
-struct Slot getSlot(const unsigned int index, const struct Slots *slots);
+void Frame_setDouble(Frame_T frame, const unsigned int index, double value);
 
+void Frame_setRef(Frame_T frame, const unsigned int index, Object_T value);
+
+void Frame_setSlot(Frame_T frame, const unsigned int index, Slot_T value);
+
+int Frame_getInt(Frame_T frame, const unsigned int index);
+
+long Frame_getLong(Frame_T frame, const unsigned int index);
+
+float Frame_getFloat(Frame_T frame, const unsigned int index);
+
+double Frame_getDouble(Frame_T frame, const unsigned int index);
+
+Object_T Frame_getRef(Frame_T frame, const unsigned int index);
+
+Slot_T Frame_getSlot(Frame_T frame, const unsigned int index);
+
+void *Frame_method(Frame_T frame);
+
+#undef Slot_T
+#undef Slots_T
+#undef Object_T
+#undef OperandStack_T
+#undef Frame_T
+#undef Stack_T
+#undef Thread_T
 
 #endif //TOYJVM_RTDA_H

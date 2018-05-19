@@ -3,9 +3,12 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.0.2)
 PROJECT(ToyJVM)
 
 SET(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
-SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -g")
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -g -Wall")
 
-ADD_EXECUTABLE(ToyJVM map.c rtda.c bytecode.c class.c array.c constantpool.c classref.c classloader.c classreader.c instruction.c interpreter.c main.c)
+SET(LIBZIP_SOURCES map.c flags.c classreader.c bytecode.c rtda.c class.c array.c constantpool.c classref.c classloader.c interpreter.c instruction.c main.c)
+
+ADD_EXECUTABLE(ToyJVM ${LIBZIP_SOURCES})
+
 
 FIND_PACKAGE(libzip REQUIRED)
 MARK_AS_ADVANCED(

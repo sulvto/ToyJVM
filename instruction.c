@@ -8,16 +8,13 @@
 #include <string.h>
 #include "rtda.h"
 #include "bytecode.h"
-#include "interpreter.h"
-#include "array.h"
-#include "rtda.c"
-#include "class.c"
 #include "classloader.h"
 #include "classref.h"
-// array type
-
-
+#include "array.h"
 #include "instruction.h"
+#include "flags.h"
+
+// array type
 #define AT_BOOLEAN  4
 #define AT_BYTE     5
 #define AT_CHAR     6
@@ -40,9 +37,7 @@ void scheduleClinit(Thread thread, Class _class);
 
 Class arrayClass(Class _this);
 
-
-
-
+static void invokeMethod(Frame invoker_frame, Method method);
 
 void nop_fetchOp(union Context *context, struct Bytecode *data) {
     // noting to do
@@ -53,8 +48,9 @@ void branch_fetchOp(union Context *context, struct Bytecode *data) {
 }
 
 void branch(Frame frame, int offset) {
-    int pc = frame->thread->pc;
-    frame->nextPC = pc + offset;
+    Thread thread = Frame_thread(frame);
+    int pc = Thread_getPc(thread);
+    Frame_setNextPC(frame, pc + offset);
 }
 
 void index8_fetchOp(union Context *context, struct Bytecode *data) {
@@ -970,53 +966,54 @@ void lookupswitch_exe(union Context *context, Frame frame) {
 }
 
 void ireturn_exe(union Context *context, Frame frame) {
-    struct Thread *thread = frame->thread;
-    struct Frame *current_frame = popFrame(thread);
-    struct Frame *invoker_frame = topFrame(thread);
+    Thread thread = Frame_thread(frame);
+    Frame current_frame = Thread_popFrame(thread);
+    Frame invoker_frame = Thread_topFrame(thread);
     int value = Frame_popInt(current_frame);
     Frame_pushInt(invoker_frame, value);
 }
 
 void lreturn_exe(union Context *context, Frame frame) {
-    struct Thread *thread = frame->thread;
-    struct Frame *current_frame = popFrame(thread);
-    struct Frame *invoker_frame = topFrame(thread);
+    Thread thread = Frame_thread(frame);
+    Frame current_frame = Thread_popFrame(thread);
+    Frame invoker_frame = Thread_topFrame(thread);
     long value = Frame_popLong(current_frame);
     Frame_pushLong(invoker_frame, value);
 }
 
 void freturn_exe(union Context *context, Frame frame) {
-    struct Thread *thread = frame->thread;
-    struct Frame *current_frame = popFrame(thread);
-    struct Frame *invoker_frame = topFrame(thread);
+    Thread thread = Frame_thread(frame);
+    Frame current_frame = Thread_popFrame(thread);
+    Frame invoker_frame = Thread_topFrame(thread);
     float value = Frame_popFloat(current_frame);
     Frame_pushFloat(invoker_frame, value);
 
 }
 
 void dreturn_exe(union Context *context, Frame frame) {
-    struct Thread *thread = frame->thread;
-    struct Frame *current_frame = popFrame(thread);
-    struct Frame *invoker_frame = topFrame(thread);
+    Thread thread = Frame_thread(frame);
+    Frame current_frame = Thread_popFrame(thread);
+    Frame invoker_frame = Thread_topFrame(thread);
     double value = Frame_popDouble(current_frame);
     Frame_pushDouble(invoker_frame, value);
 }
 
 void areturn_exe(union Context *context, Frame frame) {
-    struct Thread *thread = frame->thread;
-    struct Frame *current_frame = popFrame(thread);
-    struct Frame *invoker_frame = topFrame(thread);
-    struct Object *value = Frame_popRef(current_frame);
+    Thread thread = Frame_thread(frame);
+    Frame current_frame = Thread_popFrame(thread);
+    Frame invoker_frame = Thread_topFrame(thread);
+    Object value = Frame_popRef(current_frame);
     Frame_pushRef(invoker_frame, value);
 }
 
 void return_exe(union Context *context, Frame frame) {
-    popFrame(frame->thread);
+    Thread thread = Frame_thread(frame);
+    Thread_popFrame(thread);
 }
 
 void getstatic_exe(union Context *context, Frame frame) {
-    Class current_class = Frame_currentClass(frame);
-    FieldRef field_ref = ConstantPool_fieldRef(current_class->constant_pool, context->index);
+    Class current_class = Frame_method(frame);
+    FieldRef field_ref = ConstantPool_fieldRef(Class_getConstantPool(current_class), context->index);
     Class _class = FieldRef_class(field_ref);
     Field field = FieldRef_resolvedField(field_ref);
     // TODO
@@ -1025,10 +1022,10 @@ void getstatic_exe(union Context *context, Frame frame) {
         printf("java.lang.IncompatibleClassChangeError");
     }
 
-    u4 slot_id = field->slot_id;
-    Slots slots = _class->static_vars;
-
-    switch (field->descriptor[0]) {
+    u4 slot_id = Field_getSlotId(field);
+    Slots slots = Class_getStaticVars(_class);
+    char *descriptor = Field_descriptor(field);
+    switch (descriptor[0]) {
         case 'Z':
         case 'B':
         case 'C':
@@ -1055,16 +1052,16 @@ void getstatic_exe(union Context *context, Frame frame) {
 }
 
 void putstatic_exe(union Context *context, Frame frame) {
-    struct Method *current_method = Frame_currentMethod(frame);
-    current_method->_class->constant_pool;
-    Class current_class = current_method->_class;
-    struct FieldRef *field_ref = ConstantPool_fieldRef(current_class->constant_pool, context->index);
-    Field field = FieldRef_resolvedField(field_ref);
-    Class _class = field->_class;
+    Method current_method = Frame_method(frame);
 
-    if (_class->init_started == 0) {
-        revertNextPC(frame);
-        initClass(frame->thread, _class);
+    Class current_class = Method_class(current_method);
+    struct FieldRef *field_ref = ConstantPool_fieldRef(Class_getConstantPool(current_class), context->index);
+    Field field = FieldRef_resolvedField(field_ref);
+    Class _class = Field_class(field);
+
+    if (!Class_initStarted(_class)) {
+        Frame_revertNextPC(frame);
+        initClass(Frame_thread(frame), _class);
         return;
     }
 
@@ -1075,16 +1072,15 @@ void putstatic_exe(union Context *context, Frame frame) {
     }
 
     if (Field_isFinal(field)) {
-        if (current_class != _class || strcmp(current_method->name, "<clinit>") == 1) {
+        if (current_class != _class || Method_namecmp(current_method, "<clinit>") == 1) {
             printf("java.lang.IllegalAccessError");
         }
     }
 
-    u4 slot_id = field->slot_id;
-    OperandStack stack = frame->operand_stack;
-    Slots slots = _class->static_vars;
+    u4 slot_id = Field_getSlotId(field);
+    Slots slots = Class_getStaticVars(_class);
 
-    switch (field->descriptor[0]) {
+    switch (Field_descriptor(field)[0]) {
         case 'Z':
         case 'B':
         case 'C':
@@ -1093,17 +1089,17 @@ void putstatic_exe(union Context *context, Frame frame) {
             setInt(slot_id, Frame_popInt(frame), slots);
             break;
         case 'F':
-            setFloat(slot_id, popFloat(stack), slots);
+            setFloat(slot_id, Frame_popFloat(frame), slots);
             break;
         case 'J':
-            setLong(slot_id, popLong(stack), slots);
+            setLong(slot_id, Frame_popLong(frame), slots);
             break;
         case 'D':
-            setDouble(slot_id, popDouble(stack), slots);
+            setDouble(slot_id, Frame_popDouble(frame), slots);
             break;
         case 'L':
         case '[':
-            setRef(slot_id, popRef(stack), slots);
+            setRef(slot_id, Frame_popRef(frame), slots);
             break;
         default:
             break;
@@ -1111,64 +1107,12 @@ void putstatic_exe(union Context *context, Frame frame) {
 }
 
 void getfield_exe(union Context *context, Frame frame) {
-    Method current_method = frame->method;
-    Class current_class = current_method->_class;
-    FieldRef field_ref = ConstantPool_fieldRef(current_class->constant_pool, context->index);
+    Method current_method = Frame_method(frame);
+    Class current_class = Method_class(current_method);
+    FieldRef field_ref = ConstantPool_fieldRef(Class_getConstantPool(current_class), context->index);
     Field field = FieldRef_resolvedField(field_ref);
-    Class _class = field->_class;
+    Class _class = Field_class(field);
 
-    // TODO
-
-    if (isStatic(field->access_flags)) {
-        printf("java.lang.IncompatibleClassChangeError");
-    }
-
-    if (isFinal(field->access_flags)) {
-        if (current_class != _class || strcmp(current_method->name, "<init>") == 1) {
-            printf("java.lang.IllegalAccessError");
-        }
-    }
-
-    u4 slot_id = field->slot_id;
-    struct OperandStack *stack = frame->operand_stack;
-    struct Object *ref = popRef(stack);
-    if (ref == NULL) {
-        printf("java.lang.NullPointerException");
-    }
-    struct Slots *slots = ref->fields;
-
-    switch (field->descriptor[0]) {
-        case 'Z':
-        case 'B':
-        case 'C':
-        case 'S':
-        case 'I':
-            pushInt(getInt(slot_id, slots), stack);
-            break;
-        case 'F':
-            pushFloat(getFloat(slot_id, slots), stack);
-            break;
-        case 'J':
-            pushLong(getLong(slot_id, slots), stack);
-            break;
-        case 'D':
-            pushDouble(getDouble(slot_id, slots), stack);
-            break;
-        case 'L':
-        case '[':
-            pushRef(getRef(slot_id, slots), stack);
-            break;
-        default:
-            break;
-    }
-}
-
-void putfield_exe(union Context *context, Frame frame) {
-    Method current_method = Frame_currentMethod(frame);
-    struct Class *current_class = Frame_currentClass(frame);
-    struct FieldRef *field_ref = ConstantPool_fieldRef(current_class->constant_pool, context->index);
-    struct Field *field = FieldRef_resolvedField(field_ref);
-    struct Class *_class = field->_class;
     // TODO
 
     if (Field_isStatic(field)) {
@@ -1181,9 +1125,61 @@ void putfield_exe(union Context *context, Frame frame) {
         }
     }
 
-    u4 slot_id = field->slot_id;
+    u4 slot_id = Field_getSlotId(field);
+    struct Object *ref = Frame_popRef(frame);
+    if (ref == NULL) {
+        printf("java.lang.NullPointerException");
+    }
 
-    switch (field->descriptor[0]) {
+    Slots slots = Object_getFields(ref);
+
+    switch (Field_descriptor(field)[0]) {
+        case 'Z':
+        case 'B':
+        case 'C':
+        case 'S':
+        case 'I':
+            Frame_pushInt(frame, getInt(slot_id, slots));
+            break;
+        case 'F':
+            Frame_pushFloat(frame, getFloat(slot_id, slots));
+            break;
+        case 'J':
+            Frame_pushLong(frame, getLong(slot_id, slots));
+            break;
+        case 'D':
+            Frame_pushDouble(frame, getDouble(slot_id, slots));
+            break;
+        case 'L':
+        case '[':
+            Frame_pushRef(frame, getRef(slot_id, slots));
+            break;
+        default:
+            break;
+    }
+}
+
+void putfield_exe(union Context *context, Frame frame) {
+    Method current_method = Frame_method(frame);
+    Class current_class = Method_class(current_method);
+    FieldRef field_ref = ConstantPool_fieldRef(Class_getConstantPool(current_class), context->index);
+    Field field = FieldRef_resolvedField(field_ref);
+    Class _class = Field_class(field);
+    // TODO
+
+    if (Field_isStatic(field)) {
+        printf("java.lang.IncompatibleClassChangeError");
+    }
+
+    if (Field_isFinal(field)) {
+        if (current_class != _class || Method_namecmp(current_method, "<init>") == 1) {
+            printf("java.lang.IllegalAccessError");
+        }
+    }
+
+    u4 slot_id = Field_getSlotId(field);
+
+    switch (Field_descriptor(field)[0]) {
         case 'Z':
         case 'B':
         case 'C':
@@ -1246,9 +1242,8 @@ void putfield_exe(union Context *context, Frame frame) {
 
 
 void invokevirtual_exe(union Context *context, Frame frame) {
-    Class current_class = ((Method)Frame_method(frame))->_class;
-    struct ConstantPool *constant_pool = current_class->constant_pool;
-    MethodRef method_ref = ConstantPool_methodRef(current_class->constant_pool, context->index);
+    Class current_class = Method_class((Method)Frame_method(frame));
+    MethodRef method_ref = ConstantPool_methodRef(Class_getConstantPool(current_class), context->index);
 
     Method resolved_method = MethodRef_resolvedMethod(method_ref);
 
@@ -1256,28 +1251,29 @@ void invokevirtual_exe(union Context *context, Frame frame) {
         printf("java.lang.IncompatibleClassChangeError");
     }
 
-    struct Object *ref = getRefFromStackTop(frame->operand_stack, Method_argCount(resolved_method) - 1);
+    OperandStack stack = Frame_stack(frame);
+    Object ref = getRefFromStackTop(stack, Method_argCount(resolved_method) - 1);
     if (ref == NULL) {
         if (strcmp(MethodRef_name(method_ref), "println") == 0) {
             // TODO
-            _println(frame->operand_stack, MethodRef_descriptor(method_ref));
+            _println(stack, MethodRef_descriptor(method_ref));
         } else {
             printf("java.lang.NullPointerException");
         }
     }
 
     if (Method_isProtected(resolved_method) &&
-        Class_isSuperClassOf(resolved_method->_class, current_class) &&
-        strcmp(Class_packageName(resolved_method->_class), Class_packageName(current_class)) != 0 &&
-        ref->_class != current_class &&
-        !Class_isSuperClassOf(ref->_class, current_class)
+        Class_isSuperClassOf(Method_class(resolved_method), current_class) &&
+        strcmp(Class_packageName(Method_class(resolved_method)), Class_packageName(current_class)) != 0 &&
+            Object_getClass(ref) != current_class &&
+        !Class_isSuperClassOf(Object_getClass(ref), current_class)
             ) {
         printf("java.lang.IllegalAccessError");
     }
 
-    Method invoke_method = Class_lookupMethodInClass(ref->_class, MethodRef_name(method_ref), MethodRef_descriptor(method_ref));
+    Method invoke_method = Class_lookupMethodInClass(Object_getClass(ref), MethodRef_name(method_ref), MethodRef_descriptor(method_ref));
 
-    if (invoke_method == NULL || isAbstract(invoke_method->access_flags)) {
+    if (invoke_method == NULL || Method_isAbstract(invoke_method)) {
         printf("java.lang.AbstractMethodError");
     }
 
@@ -1286,13 +1282,13 @@ void invokevirtual_exe(union Context *context, Frame frame) {
 }
 
 void invokespecial_exe(union Context *context, Frame frame) {
-    Class current_class = ((Method)Frame_method(frame))->_class;
-    MethodRef method_ref = ConstantPool_methodRef(current_class->constant_pool, context->index);
+    Class current_class = Method_class((Method)Frame_method(frame));
+    MethodRef method_ref = ConstantPool_methodRef(Class_getConstantPool(current_class), context->index);
     Class resolved_class = MethodRef_resolvedClass(method_ref);
 
     Method resolved_method = MethodRef_resolvedMethod(method_ref);
 
-    if (Method_namecmp(resolved_method, "<init>") == 0 && resolved_method->_class != resolved_class) {
+    if (Method_namecmp(resolved_method, "<init>") == 0 && Method_class(resolved_method) != resolved_class) {
         printf("java.lang.NoSuchMethodError");
     }
 
@@ -1300,31 +1296,29 @@ void invokespecial_exe(union Context *context, Frame frame) {
         printf("java.lang.IncompatibleClassChangeError");
     }
 
-    struct OperandStack *stack = frame->operand_stack;
-
     // get ref from top
-    Object ref = getRefFromStackTop(stack, resolved_method->arg_count);
+    Object ref = getRefFromStackTop(Frame_stack(frame), Method_argCount(resolved_method));
     if (ref == NULL) {
         printf("java.lang.NullPointerException");
     }
 
-    if (isProtected(resolved_method->access_flags) &&
-        Class_isSuperClassOf(resolved_method->_class, current_class) &&
-        strcmp(Class_packageName(resolved_method->_class), Class_packageName(current_class)) != 0 &&
-        ref->_class != current_class &&
-        !Class_isSuperClassOf(ref->_class, current_class)
+    if (Method_isProtected(resolved_method) &&
+        Class_isSuperClassOf(Method_class(resolved_method), current_class) &&
+        strcmp(Class_packageName(Method_class(resolved_method)), Class_packageName(current_class)) != 0 &&
+        Object_getClass(ref) != current_class &&
+        !Class_isSuperClassOf(Object_getClass(ref), current_class)
             ) {
         printf("java.lang.IllegalAccessError");
     }
 
     Method invoke_method = resolved_method;
-    if (isSuper(current_class->access_flags) &&
+    if (Class_isSuper(current_class) &&
         Class_isSuperClassOf(resolved_class, current_class) &&
-        strcmp(resolved_method->name, "<init>") != 0) {
-        invoke_method = MethodRef_lookupMethodInClass(method_ref, current_class->super_class);
+        Method_namecmp(resolved_method, "<init>") != 0) {
+        invoke_method = MethodRef_lookupMethodInClass(method_ref, Class_getSuperClass(current_class));
     }
 
-    if (invoke_method == NULL || isAbstract(invoke_method->access_flags)) {
+    if (invoke_method == NULL || Method_isAbstract(invoke_method)) {
         printf("java.lang.AbstractMethodError");
     }
 
@@ -1359,18 +1353,19 @@ void _println(struct OperandStack *stack, char *descriptor) {
 }
 
 void invokestatic_exe(union Context *context, Frame frame) {
-    Method method = frame->method;
-    ConstantPool constant_pool = method->_class->constant_pool;
+    Method method = Frame_method(frame);
+    ConstantPool constant_pool = Class_getConstantPool(Method_class(method));
     MethodRef method_ref = ConstantPool_methodRef(constant_pool, context->index);
     Method resolved_method = MethodRef_resolvedMethod(method_ref);
 
-    if (!isStatic(resolved_method->access_flags)) {
+    if (!Method_isStatic(resolved_method)) {
         printf("java.lang.IncompatibleClassChangeError");
     }
 
-    if (resolved_method->_class->init_started == 0) {
-        revertNextPC(frame);
-        initClass(frame->thread, resolved_method->_class);
+    Class _class = Method_class(resolved_method);
+    if (!Class_initStarted(_class)) {
+        Frame_revertNextPC(frame);
+        initClass(Frame_thread(frame), _class);
         return;
     }
 
@@ -1384,29 +1379,30 @@ void invokeinterface_fetchOp(union Context *context, struct Bytecode *data) {
 }
 
 void invokeinterface_exe(union Context *context, Frame frame) {
-    struct ConstantPool *constant_pool = ((Method)Frame_method(frame))->_class->constant_pool;
+    Class current_class = Method_class((Method)Frame_method(frame));
+    ConstantPool constant_pool = Class_getConstantPool(current_class);
     InterfaceMethodRef interface_method_ref = ConstantPool_interfaceMethodRef(constant_pool, context->index);
     Method resolved_method = InterfaceMethodRef_resolvedInterfaceMethod(interface_method_ref);
     if (Method_isStatic(resolved_method) || Method_isPrivate(resolved_method)) {
         printf("java.lang.IncompatibleClassChangeError");
     }
 
-    Object ref = getRefFromStackTop(frame->operand_stack, resolved_method->arg_count - 1);
+    Object ref = getRefFromStackTop(Frame_stack(frame), Method_argCount(resolved_method) - 1);
     if (ref == NULL) {
         printf("java.lang.NullPointerException");
     }
 
     Class method_class = InterfaceMethodRef_resolvedClass(interface_method_ref);
-    if (!Class_isImplements(ref->_class, method_class)) {
+    if (!Class_isImplements(Object_getClass(ref), method_class)) {
         printf("java.lang.IncompatibleClassChangeError");
     }
 
-    Method invoke_method = InterfaceMethodRef_lookupMethodInClass(interface_method_ref, ref->_class);
-    if (invoke_method == NULL || isAbstract(invoke_method->access_flags)) {
+    Method invoke_method = InterfaceMethodRef_lookupMethodInClass(interface_method_ref, Object_getClass(ref));
+    if (invoke_method == NULL || Method_isAbstract(invoke_method)) {
         printf("java.lang.AbstractMethodError");
     }
 
-    if (!isPublic(invoke_method->access_flags)) {
+    if (!Method_isPublic(invoke_method)) {
         printf("java.lang.IllegalAccessError");
     }
 
@@ -1418,17 +1414,18 @@ void invokedynamic_exe(union Context *context, Frame frame) {
 }
 
 void new_exe(union Context *context, Frame frame) {
-    ClassRef class_ref = ConstantPool_classRef(((Method)Frame_method(frame))->_class->constant_pool, context->index);
+    Class current_class = Method_class((Method)Frame_method(frame));
+    ClassRef class_ref = ConstantPool_classRef(Class_getConstantPool(current_class), context->index);
     // TODO free?
     Class _class = ClassRef_resolvedClass(class_ref);
 
-    if (_class->init_started == 0) {
-        revertNextPC(frame);
-        initClass(frame->thread, _class);
+    if (!Class_initStarted(_class)) {
+        Frame_revertNextPC(frame);
+        initClass(Frame_thread(frame), _class);
         return;
     }
 
-    if (isInterface(_class->access_flags) || isAbstract(_class->access_flags)) {
+    if (Class_isInterface(_class) || Class_isAbstract(_class)) {
         printf("java.lang.InstantiationError");
     }
 
@@ -1447,13 +1444,14 @@ void newarray_exe(union Context *context, Frame frame) {
         printf("java.lang.NegativeArraySizeException\n");
     }
 
-    struct ClassLoader *loader = ((Method)Frame_method(frame))->_class->loader;
-    struct Class *array_class = getPrimitiveArrayClass(loader, context->atype);
-    struct Object *array = newArray(array_class, count);
+    Class current_class = Method_class((Method)Frame_method(frame));
+    ClassLoader loader = Class_loader(current_class);
+    Class array_class = getPrimitiveArrayClass(loader, context->atype);
+    Object array = newArray(array_class, count);
     Frame_pushRef(frame, array);
 }
 
-struct Class *getPrimitiveArrayClass(struct ClassLoader *loader, unsigned int atype) {
+Class getPrimitiveArrayClass(ClassLoader loader, unsigned int atype) {
 
     switch (atype) {
         case AT_BOOLEAN:
@@ -1477,7 +1475,8 @@ struct Class *getPrimitiveArrayClass(struct ClassLoader *loader, unsigned int at
 }
 
 void anewarray_exe(union Context *context, Frame frame) {
-    ClassRef class_ref = ConstantPool_classRef(((Method)Frame_method(frame))->_class->constant_pool, context->index);
+    Class current_class = Method_class((Method)Frame_method(frame));
+    ClassRef class_ref = ConstantPool_classRef(Class_getConstantPool(current_class), context->index);
     ClassRef_resolveClassRef(class_ref);
     int count = Frame_popInt(frame);
     if (count < 0) {
@@ -1486,7 +1485,7 @@ void anewarray_exe(union Context *context, Frame frame) {
 
     Class array_class = arrayClass(ClassRef_class(class_ref));
     Object array = newArray(array_class, count);
-    pushRef(array, frame->operand_stack);
+    pushRef(array, Frame_stack(frame));
 }
 
 
@@ -1519,8 +1518,8 @@ static char *getArrayClassName(char *class_name) {
 }
 
 Class arrayClass(Class _this) {
-    char *array_class_name = getArrayClassName(_this->name);
-    return ClassLoader_loadClass(_this->loader, array_class_name);
+    char *array_class_name = getArrayClassName(Class_name(_this));
+    return ClassLoader_loadClass(Class_loader(_this), array_class_name);
 }
 
 void arraylength_exe(union Context *context, Frame frame) {
@@ -1536,14 +1535,15 @@ void checkcast_exe(union Context *context, Frame frame) {
 }
 
 void instanceof_exe(union Context *context, Frame frame) {
-    struct OperandStack *stack = frame->operand_stack;
+    OperandStack stack = Frame_stack(frame);
     struct Object *ref = popRef(stack);
     if (ref == NULL) {
         pushInt(0, stack);
         return;
     }
 
-    ClassRef class_ref = ConstantPool_classRef(((Method)Frame_method(frame))->_class->constant_pool, context->index);
+    Class current_class = Method_class((Method)Frame_method(frame));
+    ClassRef class_ref = ConstantPool_classRef(Class_getConstantPool(current_class), context->index);
 
     ClassRef_resolveClassRef(class_ref);
 
@@ -1571,14 +1571,14 @@ void multianewarray_exe(union Context *context, Frame frame) {
 }
 
 void ifnull_exe(union Context *context, Frame frame) {
-    struct Object *ref = popRef(frame->operand_stack);
+    struct Object *ref = Frame_popRef(frame);
     if (ref == NULL) {
         branch(frame, context->offset);
     }
 }
 
 void ifnonnull_exe(union Context *context, Frame frame) {
-    struct Object *ref = popRef(frame->operand_stack);
+    struct Object *ref = Frame_popRef(frame);
     if (ref != NULL) {
         branch(frame, context->offset);
     }
@@ -2010,35 +2010,31 @@ struct Instruction newInstruction(u1 opcode) {
     }
 }
 
-void revertNextPC(Frame frame) {
-    frame->nextPC = frame->thread->pc;
-}
-
 
 Object newObject(Class _class) {
-    Object object = (Object) malloc(sizeof(struct Object));
-    object->_class = _class;
-    object->fields = newSlots(_class->interface_slot_count);
+    Object object = (Object) malloc(sizeof(struct Object *));
+    Object_setClass(object, _class);
+    Object_setFields(object, newSlots(Class_getInterfaceSlotCount(_class)));
     // TODO
     return NULL;
 }
 
 int Object_isInterfaceOf(Object _this, Class _other) {
-    Class s = _this->_class;
+    Class s = Object_getClass(_this);
     Class t = _other;
 
     if (s == t) {
         return 1;
     }
 
-    if (isInterface(s)) {
-        if (isInterface(t)) {
+    if (Class_isInterface(s)) {
+        if (Class_isInterface(t)) {
             return s == t || Class_isSubInterfaceOf(s, t);
         } else {
-            return strcmp(t->name, "java/lang/Object") == 0;
+            return strcmp(Class_name(t), "java/lang/Object") == 0;
         }
     } else {
-        if (isInterface(t)) {
+        if (Class_isInterface(t)) {
             return Class_isImplements(s, t);
         } else {
             return s == t || Class_isSubClassOf(s, t);
@@ -2054,13 +2050,26 @@ void initSuperClass(Thread thread, Class _class) {
 void scheduleClinit(Thread thread, Class _class) {
     Method clinit = Class_getClinitMethod(_class);
     if (clinit != NULL) {
-        struct Frame *frame = newFrame(thread, clinit);
-        pushFrame(frame, thread);
+        Frame frame = newFrame(thread, Method_maxLocals(clinit), Method_maxStack(clinit), clinit);
+        Thread_pushFrame(thread, frame);
     }
 }
 
 void initClass(Thread thread, Class _class) {
-    _class->init_started = 1;
+    Class_init(_class);
     scheduleClinit(thread, _class);
     initSuperClass(thread, _class);
+}
+
+static void invokeMethod(Frame invoker_frame, Method method) {
+    Thread thread = Frame_thread(invoker_frame);
+    Frame new_frame = newFrame(thread, Method_maxLocals(method), Method_maxStack(method), method);
+    Thread_pushFrame(thread, new_frame);
+    u4 arg_count = Method_argCount(method);
+    if (arg_count > 0) {
+        for (int i = arg_count - 1; i >= 0; --i) {
+            Slot slot = Frame_popSlot(invoker_frame);
+            setSlot(i, slot, Frame_localVars(new_frame));
+        }
+    }
 }

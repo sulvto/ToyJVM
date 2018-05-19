@@ -8,7 +8,7 @@
 #include "class.h"
 
 #define ConstantPool_T ConstantPool
-typedef struct ConstantPool_T *ConstantPool;
+typedef struct ConstantPool_T *ConstantPool_T;
 
 
 ConstantPool_T ConstantPool_free(ConstantPool_T);

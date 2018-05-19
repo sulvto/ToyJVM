@@ -137,3 +137,7 @@ void *ConstantPool_interfaceMethodRef(ConstantPool_T constant_pool, int index) {
 void *ConstantPool_classRef(ConstantPool_T constant_pool, int index) {
     return constant_pool->constants[index].class_ref;
 }
+
+Class ConstantPool_class(ConstantPool_T constant_pool) {
+    return constant_pool->_class;
+}

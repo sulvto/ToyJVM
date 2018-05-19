@@ -2,6 +2,7 @@
 // Created by sulvto on 18-5-14.
 //
 
+#include "type.h"
 #include "flags.h"
 
 int isPublic      (u2 access_flags) {

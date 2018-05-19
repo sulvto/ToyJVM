@@ -7,24 +7,11 @@
 #include <stdlib.h>
 #include "type.h"
 #include "bytecode.h"
-#include "classreader.h"
 #include "rtda.h"
-#include "instruction.h"
+#include "class.h"
 #include "interpreter.h"
-#include "rtda.c"
-#include "class.c"
+#include "instruction.h"
 
-void invokeMethod(Frame invoker_frame, Method method) {
-    Thread thread = invoker_frame->thread;
-    Frame new_frame = newFrame(thread, method);
-    pushFrame(new_frame, thread);
-    if (method->arg_count > 0) {
-        for (int i = method->arg_count - 1; i >= 0; --i) {
-            Slot slot = popSlot(invoker_frame->operand_stack);
-            setSlot(i, slot, new_frame->localVars);
-        }
-    }
-}
 
 
 void loop(Thread thread) {
@@ -34,12 +21,13 @@ void loop(Thread thread) {
 
     while (1) {
         // current frame
-        Frame frame = topFrame(thread);
+        Frame frame = Thread_topFrame(thread);
 
-        int pc = frame->nextPC;
-        thread->pc = pc;
+        int pc = Frame_getNextPC(frame);
+        Thread_setPc(thread, pc);
 
-        reset(((Method)Frame_method(frame))->code, pc, bytecode_data);
+        Method method = (Method)Frame_method(frame);
+        reset(Method_code(method), pc, bytecode_data);
         u1 opcode = readBytecodeU1(bytecode_data);
 
 
@@ -47,7 +35,7 @@ void loop(Thread thread) {
 
         struct Instruction inst = newInstruction(opcode);
         inst.fetchOperands(context, bytecode_data);
-        frame->nextPC = bytecode_data->pc;
+        Frame_setNextPC(frame, bytecode_data->pc);
 
         inst.execute(context, frame);
 
@@ -56,7 +44,7 @@ void loop(Thread thread) {
         free(context);
 
         // stack is empty.
-        if (thread->stack->top == NULL) {
+        if (Thread_empty(thread)) {
             break;
         }
     }
@@ -64,8 +52,8 @@ void loop(Thread thread) {
 
 void interpret(Method main_method) {
     Thread thread = newThread();
-    Frame frame = newFrame(thread, main_method);
-    pushFrame(frame, thread);
+    Frame frame = newFrame(thread, Method_maxLocals(main_method), Method_maxStack(main_method), main_method);
+    Thread_pushFrame(thread, frame);
 
     loop(thread);
 }

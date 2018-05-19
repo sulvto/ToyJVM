@@ -6,13 +6,11 @@
 #define TOYJVM_INTERPRETER_H
 
 #include "type.h"
-#include "rtda.h"
 #include "bytecode.h"
+#include "rtda.h"
 #include "class.h"
+#include "interpreter.h"
 
 void interpret(Method main);
-
-void invokeMethod(Frame invokerFrame, Method method);
-
 
 #endif //TOYJVM_INTERPRETER_H

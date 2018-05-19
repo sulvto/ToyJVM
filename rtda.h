@@ -8,37 +8,37 @@
 #include "type.h"
 
 #define Slot_T Slot
-typedef struct Slot_T *Slot;
+typedef struct Slot_T *Slot_T;
 
 #define Slots_T Slots
-typedef struct Slots_T *Slots;
+typedef struct Slots_T *Slots_T;
 
 #define Object_T Object
-typedef struct Object_T *Object;
+typedef struct Object_T *Object_T;
 
 #define OperandStack_T OperandStack
-typedef struct OperandStack_T *OperandStack;
+typedef struct OperandStack_T *OperandStack_T;
 
 #define Frame_T Frame
-typedef struct Frame_T *Frame;
+typedef struct Frame_T *Frame_T;
 
 #define Stack_T Stack
-typedef struct Stack_T *Stack;
+typedef struct Stack_T *Stack_T;
 
 #define Thread_T Thread
-typedef struct Thread_T *Thread;
+typedef struct Thread_T *Thread_T;
 
-Slots_T newSlots(const unsigned int max);
+extern Slots_T newSlots(const unsigned int max);
 
 Thread_T newThread();
 
-Frame_T newFrame(Thread_T thread, void *method);
+Frame_T newFrame(Thread_T, u4 , u4, void *);
 
-void pushFrame(Frame_T frame, Thread_T thread);
+void Thread_pushFrame(Thread_T, Frame_T);
 
-Frame_T popFrame(Thread_T thread);
+Frame_T Thread_popFrame(Thread_T);
 
-Frame_T topFrame(Thread_T thread);
+Frame_T Thread_topFrame(Thread_T);
 
 Object getRefFromStackTop(OperandStack_T stack, u4 i);
 
@@ -101,10 +101,14 @@ void Object_setDouble(Object_T object, const unsigned int index, double value);
 
 void Object_setRef(Object_T object, const unsigned int index, Object_T value);
 
+void Object_setClass(Object_T, void*);
 
-void *Frame_currentClass(Frame_T frame);
+void *Object_getClass(Object_T);
 
-void *Frame_currentMethod(Frame_T frame);
+void Object_setFields(Object_T _this, void *fields);
+
+void *Object_getFields(Object_T _this);
+
 
 void Frame_pushInt(Frame_T frame, const int);
 
@@ -154,7 +158,25 @@ Object_T Frame_getRef(Frame_T frame, const unsigned int index);
 
 Slot_T Frame_getSlot(Frame_T frame, const unsigned int index);
 
-void *Frame_method(Frame_T frame);
+Thread_T Frame_thread(Frame_T);
+
+OperandStack_T Frame_stack(Frame_T _this);
+
+void Frame_revertNextPC(Frame_T);
+
+void *Frame_method(Frame_T);
+
+Slots Frame_localVars(Frame_T);
+
+void Frame_setNextPC(Frame_T, int);
+
+int Frame_getNextPC(Frame_T);
+
+int Thread_empty(Thread_T);
+
+void Thread_setPc(Thread_T, int);
+
+int Thread_getPc(Thread_T);
 
 #undef Slot_T
 #undef Slots_T

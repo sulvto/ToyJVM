@@ -4,11 +4,9 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #include "type.h"
 #include "flags.h"
 #include "class.h"
-#include "classref.h"
 
 #define Field_T Field
 
@@ -44,7 +42,7 @@ struct Class_T {
     char                    *super_class_name;
     char                    **interface_name;
     u2                      constant_pool_count;
-    ConstantPool            constant_pool;
+    void                    *constant_pool;
     u2                      fields_count;
     Field_T                 *fields;
     u2                      methods_count;
@@ -62,19 +60,94 @@ struct Class_T {
 };
 
 
-Field_T lookupField(Class_T _class, char *name, char *descriptor);
-
-Method_T lookupMethod(Class_T _class, char *name, char *descriptor);
-
-static Method_T lookupInterfaceMethod(Class_T _class, char *name, char *descriptor);
-
-
 static char *getArrayClassName(char *class_name);
 
 
-void resolveFieldRef(struct FieldRef *field_ref);
+void copyFieldInfo(struct MemberInfo *field_info, Field_T field, struct ConstantPoolInfo *constant_pool_info) {
+    field->access_flags = field_info->access_flags;
+    field->name = memberName(field_info, constant_pool_info);
+    field->descriptor = descriptor(field_info, constant_pool_info);
+    struct AttributeInfo *attribute_info = constantValueAttribute(field_info, constant_pool_info);
+    if (attribute_info != NULL) {
+        field->const_value_index = attribute_info->info.constant_value.constant_value_index;
+    }
+}
 
-static void resolveInterfaceMethodRef(struct InterfaceMethodRef *interface_method_ref);
+void copyMethodInfo(struct MemberInfo *method_info, Method_T method, struct ConstantPoolInfo *constant_pool_info) {
+    method->access_flags = method_info->access_flags;
+    method->name = memberName(method_info, constant_pool_info);
+    method->descriptor = descriptor(method_info, constant_pool_info);
+    struct AttributeInfo *attribute_info = codeAttribute(method_info, constant_pool_info);
+    if (attribute_info != NULL) {
+        method->code = attribute_info->info.code.code;
+        method->max_locals = attribute_info->info.code.max_locals;
+        method->max_stack = attribute_info->info.code.max_stack;
+        method->code_length = attribute_info->info.code.code_length;
+    }
+}
+
+Field_T *newFields(Class_T _class, struct ClassFile *class_file) {
+    u2 fields_count = class_file->fields_count;
+    Field_T *fields = (Field_T*) malloc(sizeof(struct Field) * fields_count);
+    //
+    for (int i = 0; i < fields_count; ++i) {
+        fields[i]->_class = _class;
+        copyFieldInfo(&class_file->fields[i], fields[i], class_file->constant_pool_info);
+    }
+
+    return fields;
+}
+
+Method_T *newMethods(Class_T _class, struct ClassFile *class_file) {
+    u2 count = class_file->methods_count;
+    Method_T *methods = (Method_T*) malloc(sizeof(struct Method) * count);
+    for (int i = 0; i < count; ++i) {
+        methods[i]->_class = _class;
+        copyMethodInfo(&class_file->methods[i], methods[i], class_file->constant_pool_info);
+        // TODO
+        if (isNative(methods[i]->access_flags)) {
+            // TODO
+        }
+    }
+
+    return methods;
+}
+
+Class_T Class_new(struct ClassFile *class_file) {
+    Class_T _class = (Class_T) malloc(sizeof(struct Class));
+    _class->access_flags = class_file->access_flags;
+    _class->name = className(class_file->this_class, class_file->constant_pool_info);
+    _class->super_class_name = className(class_file->super_class, class_file->constant_pool_info);
+    // interfaces_count
+    _class->constant_pool_count = class_file->constant_pool_count;
+    _class->fields = newFields(_class, class_file);
+    _class->methods = newMethods(_class, class_file);
+    return _class;
+}
+
+Class_T Class_newArrayClass(u2 access_flags,char *name, void *loader, Class_T super_class, Class_T cloneable_class, Class_T serializable_class) {
+    Class _class = (Class_T) malloc(sizeof(struct Class));
+
+    _class->access_flags = access_flags;
+    _class->name = name;
+    _class->loader = loader;
+    _class->init_started = 1;
+    _class->super_class = super_class;
+    _class->super_class_name = super_class->name;
+    _class->interface_count = 2;
+    _class->interface_class = (Class*) malloc(sizeof(struct Class) * 2);
+    _class->interface_class[0] = cloneable_class;
+    _class->interface_class[1] = serializable_class;
+    return _class;
+}
+
+int Class_initStarted(Class_T _this) {
+    return _this->init_started;
+}
+
+void Class_init(Class_T _this) {
+    _this->init_started = 1;
+}
 
 Method_T Class_lookupMethod(Class_T _class, char *name, char *descriptor) {
     Method method = Class_lookupMethodInClass(_class, name, descriptor);
@@ -107,83 +180,18 @@ Field_T Class_lookupField(Class_T _class, char *name, char *descriptor) {
     }
 
     for (int j = 0; j < _class->interface_count; ++j) {
-        Field field = lookupField(_class->interface_class[j], name, descriptor);
+        Field field = Class_lookupField(_class->interface_class[j], name, descriptor);
         if (field != NULL) {
             return field;
         }
     }
 
     if (_class->super_class != NULL) {
-        return lookupField(_class->super_class, name, descriptor);
+        return Class_lookupField(_class->super_class, name, descriptor);
     }
 
     return NULL;
 }
-
-Field_T *newFields(Class_T _class, struct ClassFile *class_file) {
-    u2 fields_count = class_file->fields_count;
-    Field_T *fields = (Field_T*) malloc(sizeof(struct Field) * fields_count);
-    //
-    for (int i = 0; i < fields_count; ++i) {
-        fields[i]->_class = _class;
-        copyFieldInfo(&class_file->fields[i], fields[i], class_file->constant_pool_info);
-    }
-
-    return fields;
-}
-
-Method_T *newMethods(Class_T _class, struct ClassFile *class_file) {
-    u2 count = class_file->methods_count;
-    Method_T *methods = (Method_T*) malloc(sizeof(struct Method) * count);
-    for (int i = 0; i < count; ++i) {
-        methods[i]->_class = _class;
-        copyMethodInfo(&class_file->methods[i], methods[i], class_file->constant_pool_info);
-        // TODO
-        if (isNative(methods[i]->access_flags)) {
-            // TODO
-        }
-    }
-
-    return methods;
-}
-
-
-void copyFieldInfo(struct MemberInfo *field_info, Field_T field, struct ConstantPoolInfo *constant_pool_info) {
-    field->access_flags = field_info->access_flags;
-    field->name = memberName(field_info, constant_pool_info);
-    field->descriptor = descriptor(field_info, constant_pool_info);
-    struct AttributeInfo *attribute_info = constantValueAttribute(field_info, constant_pool_info);
-    if (attribute_info != NULL) {
-        field->const_value_index = attribute_info->info.constant_value.constant_value_index;
-    }
-}
-
-void copyMethodInfo(struct MemberInfo *method_info, Method_T method, struct ConstantPoolInfo *constant_pool_info) {
-    method->access_flags = method_info->access_flags;
-    method->name = memberName(method_info, constant_pool_info);
-    method->descriptor = descriptor(method_info, constant_pool_info);
-    struct AttributeInfo *attribute_info = codeAttribute(method_info, constant_pool_info);
-    if (attribute_info != NULL) {
-        method->code = attribute_info->info.code.code;
-        method->max_locals = attribute_info->info.code.max_locals;
-        method->max_stack = attribute_info->info.code.max_stack;
-        method->code_length = attribute_info->info.code.code_length;
-    }
-}
-
-Class_T Class_new(struct ClassFile *class_file) {
-    Class_T _class = (Class_T) malloc(sizeof(struct Class));
-    _class->access_flags = class_file->access_flags;
-    _class->name = className(class_file->this_class, class_file->constant_pool_info);
-    _class->super_class_name = className(class_file->super_class, class_file->constant_pool_info);
-    // interfaces_count
-    _class->constant_pool_count = class_file->constant_pool_count;
-    _class->constant_pool = ConstantPool_new(_class, class_file);
-    _class->fields = newFields(_class, class_file);
-    _class->methods = newMethods(_class, class_file);
-    return _class;
-}
-
 
 char *Class_packageName(Class_T _this) {
     // java/lang/Object
@@ -200,6 +208,63 @@ char *Class_packageName(Class_T _this) {
 void *Class_loader(Class_T _class) {
     return _class->loader;
 }
+
+char *Class_name(Class_T _this) {
+    return _this->name;
+}
+
+u2 Class_fieldsCount(Class_T _this) {
+    return _this->fields_count;
+}
+
+Field_T *Class_fields(Class_T _this) {
+    return _this->fields;
+}
+
+void Class_setInterfaceSlotCount(Class_T _this, u4 interface_slot_count) {
+    _this->interface_slot_count = interface_slot_count;
+}
+
+u4 Class_getInterfaceSlotCount(Class_T _this) {
+    return _this->interface_slot_count;
+}
+
+void Class_setLoader(Class_T _this, void *loader) {
+    _this->loader = loader;
+}
+
+void Class_setSuperClass(Class_T _this, Class_T super_class) {
+    _this->super_class = super_class;
+}
+
+Class_T Class_getSuperClass(Class_T _this) {
+    return _this->super_class;
+}
+
+char *Class_superClassName(Class_T _this) {
+    return _this->super_class_name;
+}
+
+void *Class_getConstantPool(Class_T _this) {
+    return _this->constant_pool;
+}
+
+void Class_setConstantPool(Class_T _this, void *constant_pool) {
+    _this->constant_pool = constant_pool;
+}
+
+Slots Class_getStaticVars(Class_T _this) {
+    return _this->static_vars;
+}
+
+void Class_setStaticVars(Class_T _this, Slots static_vars) {
+    _this->static_vars = static_vars;
+}
+
+u4 Class_staticSlotCount(Class_T _this) {
+    return _this->static_slot_count;
+}
+
 
 Class *Class_interface(Class_T _class) {
     return _class->interface_class;
@@ -251,8 +316,16 @@ int Class_isSuperClassOf(Class_T _this, Class_T other) {
     return Class_isSubClassOf(other, _this);
 }
 
-int Class_isInterface(Class_T _class) {
-    return isInterface(_class->access_flags);
+int Class_isInterface(Class_T _this) {
+    return isInterface(_this->access_flags);
+}
+
+int Class_isAbstract(Class_T _this) {
+    return isAbstract(_this->access_flags);
+}
+
+int Class_isSuper(Class_T _this) {
+    return isSuper(_this->access_flags);
 }
 
 int Field_isAccessibleTo(Field_T _this, Class_T other) {
@@ -272,6 +345,33 @@ int Field_isAccessibleTo(Field_T _this, Class_T other) {
     return _this->_class == other;
 }
 
+int Field_isFinal(Field_T _this) {
+    return isFinal(_this->access_flags);
+}
+
+int Field_isStatic(Field_T _this) {
+    return isStatic(_this->access_flags);
+}
+
+u2 Field_constValueIndex(Field_T _this) {
+    return _this->const_value_index;
+}
+
+char *Field_descriptor(Field_T _this) {
+    return _this->descriptor;
+}
+
+u4 Field_getSlotId(Field_T _this) {
+    return _this->slot_id;
+}
+
+void Field_setSlotId(Field_T _this, u4 slot_id) {
+    _this->slot_id = slot_id;
+}
+
+Class_T Field_class(Field_T _this) {
+    return _this->_class;
+}
 
 int Method_isAccessibleTo(Method_T _this, Class_T other) {
     if (isPublic(_this->access_flags)) {
@@ -290,6 +390,29 @@ int Method_isAccessibleTo(Method_T _this, Class_T other) {
     return _this->_class == other;
 }
 
+int Method_isStatic(Method_T _this) {
+    return isStatic(_this->access_flags);
+}
+
+int Method_isAbstract(Method_T _this) {
+    return isAbstract(_this->access_flags);
+}
+
+int Method_isPrivate(Method_T _this) {
+    return isPrivate(_this->access_flags);
+}
+
+int Method_isProtected(Method_T _this) {
+    return isProtected(_this->access_flags);
+}
+
+int Method_isPublic(Method_T _this) {
+    return isPublic(_this->access_flags);
+}
+
+u4 Method_argCount(Method_T _this) {
+    return _this->arg_count;
+}
 
 u4 Method_maxLocals(Method_T _this) {
     return _this->max_locals;
@@ -299,6 +422,21 @@ u4 Method_maxStack(Method_T _this) {
     return _this->max_stack;
 }
 
+int Method_namecmp(Method_T _this, const char *name) {
+    return strcmp(_this->name, name);
+}
+
+int Method_classcmp(Method_T _this, Class_T _class) {
+    return _this->_class == _class;
+}
+
+Class_T Method_class(Method_T _this) {
+    return _this->_class;
+}
+
+u1 *Method_code(Method_T _this) {
+    return _this->code;
+}
 
 static Method_T Class_getStaticMethod(Class_T _class, char *name, char *descriptor) {
     return NULL;
@@ -307,7 +445,6 @@ static Method_T Class_getStaticMethod(Class_T _class, char *name, char *descript
 Method_T Class_getClinitMethod(Class_T _class) {
     return Class_getStaticMethod(_class, "<clinit>", "()V");
 }
-
 
 Method_T Class_getMainMethod(Class_T _class) {
 
@@ -322,7 +459,6 @@ Method_T Class_getMainMethod(Class_T _class) {
     return NULL;
 }
 
-
 Method_T Class_lookupInterfaceMethod(Class_T _class, char *name, char *descriptor) {
     for (int i = 0; i < _class->methods_count; ++i) {
         Method method = _class->methods[i];
@@ -334,13 +470,12 @@ Method_T Class_lookupInterfaceMethod(Class_T _class, char *name, char *descripto
     return lookupMethodInInterfaces(_class->interface_class, _class->interface_count, name, descriptor);
 }
 
-
 Method_T lookupMethodInInterfaces(Class_T *interfaces, u2 count, char *name, char *descriptor) {
     struct Method *method;
 
     for (int i = 0; i < count; ++i) {
         for (int j = 0; j < interfaces[i]->methods_count; ++j) {
-            method = &interfaces[i]->methods[j];
+            method = interfaces[i]->methods[j];
             if (strcmp(method->name, name) == 0 && strcmp(method->descriptor, descriptor) == 0) {
                 return method;
             }

@@ -5,6 +5,8 @@
 #ifndef TOYJVM_FLAGS_H
 #define TOYJVM_FLAGS_H
 
+#include "type.h"
+
 #define ACC_PUBLIC      0x0001
 #define ACC_PRIVATE     0x0002
 #define ACC_PROTECTED   0x0004
@@ -54,8 +56,11 @@ int isInterface(u2 access_flags);
 int isAbstract(u2 access_flags);
 
 int isStrict      (u2 access_flags);
+
 int isSynthetic   (u2 access_flags);
+
 int isAnnotation  (u2 access_flags);
+
 int isEnum        (u2 access_flags);
 
 

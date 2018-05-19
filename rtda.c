@@ -83,14 +83,14 @@ Slots_T newSlots(const unsigned int max) {
     Slots_T slots = (Slots_T) malloc(sizeof(struct Slots));
     slots->size = 0;
     slots->max = max;
-    slots->value = (Slot_T) malloc(sizeof(struct Slot) * max);
+    slots->value = (Slot_T*) malloc(sizeof(struct Slot) * max);
     return slots;
 }
 
 OperandStack_T newOperandStack(const unsigned int max) {
     OperandStack_T operand_stack = (OperandStack_T)malloc(sizeof(struct OperandStack));
     operand_stack->size = 0;
-    operand_stack->slot = (Slot_T) malloc(sizeof(struct Slot) * max);
+    operand_stack->slot = (Slot_T*) malloc(sizeof(struct Slot) * max);
     return operand_stack;
 }
 
@@ -99,17 +99,17 @@ Object getRefFromStackTop(OperandStack_T stack, u4 i) {
     return stack->slot[stack->size - 1 - i]->ref;
 }
 
-Frame_T newFrame(Thread_T thread, void *method) {
+Frame_T newFrame(Thread_T thread, u4 max_locals, u4 max_stack, void *method) {
     Frame_T frame = (Frame_T) malloc(sizeof(struct Frame));
-    frame->localVars = newSlots(Method_maxLocals(method));
-    frame->operand_stack = newOperandStack(Method_maxStack(method));
+    frame->localVars = newSlots(max_locals);
+    frame->operand_stack = newOperandStack(max_stack);
     frame->thread = thread;
     frame->method = method;
     return frame;
 }
 
-void pushFrame(Frame_T frame, Thread_T thread) {
-    Stack_T stack = thread->stack;
+void Thread_pushFrame(Thread_T _this, Frame_T frame) {
+    Stack_T stack = _this->stack;
 
     if (stack->size >= stack->max_size) {
         // TODO
@@ -123,27 +123,47 @@ void pushFrame(Frame_T frame, Thread_T thread) {
     stack->size++;
 }
 
-Frame_T popFrame(Thread_T thread) {
-    if (thread->stack->top == NULL) {
+Frame_T Thread_popFrame(Thread_T _this) {
+    if (_this->stack->top == NULL) {
         // TODO
         printf("jvm stack is empty!\n");
     }
 
-    Frame_T top = thread->stack->top;
-    thread->stack->top = top->next;
-    thread->stack->size--;
+    Frame_T top = _this->stack->top;
+    _this->stack->top = top->next;
+    _this->stack->size--;
     top->next = NULL;
 
     return top;
 }
 
-Frame_T topFrame(Thread_T thread) {
-    if (thread->stack->top == NULL) {
+Frame_T Thread_topFrame(Thread_T _this) {
+    if (_this->stack->top == NULL) {
         // TODO
         printf("jvm stack is empty!\n");
     }
 
-    return thread->stack->top;
+    return _this->stack->top;
+}
+
+int Thread_empty(Thread_T _this) {
+    return _this->stack->top == NULL;
+}
+
+void Thread_setPc(Thread_T _this, int pc) {
+    _this->pc = pc;
+}
+
+int Thread_getPc(Thread_T _this) {
+    return _this->pc;
+}
+
+void Frame_setNextPC(Frame_T frame, int pc) {
+    frame->nextPC = pc;
+}
+
+int Frame_getNextPC(Frame_T frame) {
+    return frame->nextPC;
 }
 
 
@@ -157,7 +177,7 @@ void pushLong(const long value, OperandStack_T operandStack) {
 }
 
 void pushFloat(const float value, OperandStack_T operandStack) {
-    float *f = &operandStack->slot[operandStack->size++]->num;
+    float *f = &(operandStack->slot[operandStack->size++]->num);
     *f = value;
 }
 
@@ -171,7 +191,7 @@ void pushRef(const Object_T value, OperandStack_T operandStack) {
 }
 
 void pushSlot(const Slot_T slot, OperandStack_T operandStack) {
-    struct Slot *target = &operandStack->slot[operandStack->size++];
+    struct Slot *target = operandStack->slot[operandStack->size++];
     target->num = slot->num;
     target->ref = slot->ref;
 }
@@ -188,7 +208,7 @@ long popLong(OperandStack_T operandStack) {
 }
 
 float popFloat(OperandStack_T operandStack) {
-    float *f = &operandStack->slot[--operandStack->size]->num;
+    float *f = &(operandStack->slot[--operandStack->size]->num);
     return *f;
 }
 
@@ -270,6 +290,43 @@ Slot_T getSlot(const unsigned int index, const Slots slots) {
 }
 
 
+void Object_setInt(Object_T object, const unsigned int index, int value) {
+    setInt(index, value, object->fields);
+}
+
+void Object_setLong(Object_T object, const unsigned int index, long value) {
+    setLong(index, value, object->fields);
+}
+
+void Object_setFloat(Object_T object, const unsigned int index, float value) {
+    setFloat(index, value, object->fields);
+}
+
+void Object_setDouble(Object_T object, const unsigned int index, double value) {
+    setDouble(index, value, object->fields);
+}
+
+void Object_setRef(Object_T object, const unsigned int index, Object_T value) {
+    setRef(index, value, object->fields);
+}
+
+void Object_setClass(Object_T _this, void *_class) {
+    _this->_class = _class;
+}
+
+void *Object_getClass(Object_T _this) {
+    return _this->_class;
+}
+
+void Object_setFields(Object_T _this, void *fields) {
+    _this->fields = fields;
+}
+
+void *Object_getFields(Object_T _this) {
+    return _this->fields;
+}
+
+
 void Frame_pushInt(Frame_T frame, const int value) {
     pushInt(value, frame->operand_stack);
 }
@@ -345,35 +402,48 @@ void Frame_setSlot(Frame_T frame, const unsigned int index, Slot_T value ) {
 }
 
 int Frame_getInt(Frame_T frame, const unsigned int index) {
-    getInt(index, frame->localVars);
+    return getInt(index, frame->localVars);
 }
 
 long Frame_getLong(Frame_T frame, const unsigned int index) {
-    getLong(index, frame->localVars);
+    return getLong(index, frame->localVars);
 }
 
 float Frame_getFloat(Frame_T frame, const unsigned int index) {
-    getFloat(index, frame->localVars);
+    return getFloat(index, frame->localVars);
 }
 
 double Frame_getDouble(Frame_T frame, const unsigned int index) {
-    getDouble(index, frame->localVars);
+    return getDouble(index, frame->localVars);
 }
 
 Object_T Frame_getRef(Frame_T frame, const unsigned int index) {
-    getRef(index, frame->localVars);
+    return getRef(index, frame->localVars);
 }
 
 Slot_T Frame_getSlot(Frame_T frame, const unsigned int index) {
-    getSlot(index, frame->localVars);
+    return getSlot(index, frame->localVars);
 }
 
-
-void *Frame_method(Frame_T frame) {
-    return frame->method;
+Thread_T Frame_thread(Frame_T _this) {
+    return _this->thread;
 }
 
+void *Frame_method(Frame_T _this) {
+    return _this->method;
+}
 
+OperandStack_T Frame_stack(Frame_T _this) {
+    return _this->operand_stack;
+}
+
+void Frame_revertNextPC(Frame_T _this) {
+    _this->nextPC = _this->thread->pc;
+}
+
+Slots Frame_localVars(Frame_T _this) {
+    return _this->localVars;
+}
 
 void testLocalVars(struct Slots *localVars) {
     setInt(0, 100, localVars);

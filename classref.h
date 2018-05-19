@@ -11,7 +11,7 @@
 #include "constantpool.h"
 
 #define ClassRef_T ClassRef
-typedef struct ClassRef_T *ClassRef;
+typedef struct ClassRef_T *ClassRef_T;
 
 #define MethodRef_T MethodRef
 typedef struct MethodRef_T *MethodRef;

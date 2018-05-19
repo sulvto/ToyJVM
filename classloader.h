@@ -8,7 +8,7 @@
 #include "class.h"
 
 #define ClassLoader_T ClassLoader
-typedef struct ClassLoader_T *ClassLoader;
+typedef struct ClassLoader_T *ClassLoader_T;
 
 ClassLoader_T ClassLoader_new();
 

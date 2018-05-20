@@ -50,15 +50,15 @@ struct Code_attributeInfo {
 };
 
 union AttributeInfoUnion {
-    struct Unparsed_attributeInfo       unparsed;
-    struct ConstantValue_attributeInfo  constant_value;
-    struct Code_attributeInfo           code;
+    struct Unparsed_attributeInfo       *unparsed;
+    struct ConstantValue_attributeInfo  *constant_value;
+    struct Code_attributeInfo           *code;
 };
 
 struct AttributeInfo {
     u2 attribute_name_index;
     u4 attribute_length;
-    union AttributeInfoUnion info;
+    union AttributeInfoUnion *info;
 };
 
 struct CONSTANT_Class_info {
@@ -182,6 +182,8 @@ struct s_class_data {
     int length;
     int index;
 };
+
+void freeClassData(struct s_class_data **class_data);
 
 struct s_class_data *readClassFile(const char *);
 

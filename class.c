@@ -122,8 +122,9 @@ Field_T *newFields(Class_T _class, struct ClassFile *class_file) {
 
 Method_T *newMethods(Class_T _class, struct ClassFile *class_file) {
     u2 count = class_file->methods_count;
-    Method_T *methods = (Method_T*) malloc(sizeof(struct Method) * count);
+    Method_T *methods = (Method_T *) malloc(sizeof(struct Method) * count);
     for (int i = 0; i < count; ++i) {
+        methods[i] = malloc(sizeof(Field_T));
         methods[i]->_class = _class;
         copyMethodInfo(&class_file->methods[i], methods[i], class_file->constant_pool_info);
         // TODO
@@ -136,7 +137,7 @@ Method_T *newMethods(Class_T _class, struct ClassFile *class_file) {
 }
 
 Class_T Class_new(struct ClassFile *class_file) {
-    Class_T _class = (Class_T) malloc(1 * sizeof(struct Class));
+    Class_T _class = (Class_T) malloc(sizeof(struct Class));
     _class->access_flags = class_file->access_flags;
     _class->name = className(class_file->this_class, class_file->constant_pool_info);
     _class->super_class_name = className(class_file->super_class,

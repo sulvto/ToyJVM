@@ -124,7 +124,7 @@ Method_T *newMethods(Class_T _class, struct ClassFile *class_file) {
     u2 count = class_file->methods_count;
     Method_T *methods = (Method_T *) malloc(sizeof(struct Method) * count);
     for (int i = 0; i < count; ++i) {
-        methods[i] = malloc(sizeof(Field_T));
+        methods[i] = malloc(sizeof(Method_T));
         methods[i]->_class = _class;
         copyMethodInfo(&class_file->methods[i], methods[i], class_file->constant_pool_info);
         // TODO

@@ -41,6 +41,7 @@ ClassLoader_T ClassLoader_new() {
 }
 
 ClassLoader_T ClassLoader_free(ClassLoader_T _this) {
+    // TODO
     return NULL;
 }
 
@@ -50,7 +51,7 @@ Class ClassLoader_loadClass(ClassLoader_T _this, char *name) {
         return _class;
     }
 
-    if (Class_name(_class)[0] == '[') {
+    if (name[0] == '[') {
         return ClassLoader_loadArrayClass(_this, name);
     } else {
         return ClassLoader_loadNonArrayClass(_this, name);
@@ -68,12 +69,19 @@ Class ClassLoader_loadArrayClass(ClassLoader_T _this, const char *name) {
 }
 
 Class ClassLoader_loadNonArrayClass(ClassLoader_T _this, const char *name) {
+
     struct s_class_data *class_data = readClassFile(name);
-    printf("readClassFile success\n");
-    Class _class = ClassLoader_defineClass(_this, class_data);
-    link(_class);
-    printf("[Loaded %s from %s]\n", name, "from");
-    return _class;
+    if (class_data == NULL) {
+        printf("class not found: %s\n", name);
+        return NULL;
+    } else {
+        printf("readClassFile success\n");
+        Class _class = ClassLoader_defineClass(_this, class_data);
+//        freeClassData(&class_data);
+        link(_class);
+        printf("[Loaded %s from %s]\n", name, "from");
+        return _class;
+    }
 }
 
 
@@ -186,6 +194,7 @@ static void initStaticFinalVar(Class _class, Field field) {
         } else if (strcmp(descriptor, "Ljava/lang/String;") == 0) {
             char *string = ConstantPool_stringValue(constantPool, const_value_index);
 //            set
+            // TODO
             printf("Ljava/lang/String\n");
         } else {
             // TODO

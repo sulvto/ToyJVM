@@ -11,7 +11,7 @@
 typedef struct ConstantPool_T *ConstantPool_T;
 
 
-ConstantPool_T ConstantPool_free(ConstantPool_T);
+void ConstantPool_free(ConstantPool_T);
 
 ConstantPool_T ConstantPool_new(Class _class, struct ClassFile *class_file);
 

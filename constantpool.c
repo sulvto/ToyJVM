@@ -28,7 +28,7 @@ struct ConstantPool_T {
 };
 
 
-ConstantPool_T ConstantPool_free(ConstantPool_T constant_pool) {
+void ConstantPool_free(ConstantPool_T constant_pool) {
     // TODO
 }
 
@@ -44,8 +44,10 @@ ConstantPool_T ConstantPool_new(Class _class, struct ClassFile *class_file) {
         struct ConstantPoolInfo constant_pool_info = class_file->constant_pool_info[i];
         switch (constant_pool_info.tag) {
             case CONSTANT_Class: {
-                char *class_name = ConstantPoolInfo_getUtf8String(class_file->constant_pool_info, constant_pool_info.info.class_info.name_index);
-                constant_pool->constants[i].class_ref = ClassRef_new(constant_pool, class_name);
+                char *class_name = ConstantPoolInfo_getUtf8String(class_file->constant_pool_info,
+                                                                  constant_pool_info.info.class_info.name_index);
+
+                constant_pool->constants[i].class_ref = ClassRef_new(class_name, constant_pool);
                 break;
             }
             case CONSTANT_Methodref: {
@@ -55,6 +57,7 @@ ConstantPool_T ConstantPool_new(Class _class, struct ClassFile *class_file) {
                         constant_pool_info.info.methodref_info.name_and_type_index);
                 char *name = ConstantPoolInfo_getUtf8String(class_file->constant_pool_info,
                                                             nameAndType_info.name_index);
+
                 char *descriptor = ConstantPoolInfo_getUtf8String(class_file->constant_pool_info,
                                                                   nameAndType_info.descriptor_index);
 
@@ -67,14 +70,16 @@ ConstantPool_T ConstantPool_new(Class _class, struct ClassFile *class_file) {
                 struct CONSTANT_NameAndType_info nameAndType_info = ConstantPoolInfo_getNameAndType(
                         class_file->constant_pool_info,
                         constant_pool_info.info.fieldref_info.name_and_type_index);
+
                 char *name = ConstantPoolInfo_getUtf8String(class_file->constant_pool_info,
                                                             nameAndType_info.name_index);
+
                 char *descriptor = ConstantPoolInfo_getUtf8String(class_file->constant_pool_info,
                                                                   nameAndType_info.descriptor_index);
 
                 char *class_name = className(class_file->this_class, class_file->constant_pool_info);
 
-                constant_pool->constants[i].field_ref = FieldRef_new(name,descriptor,class_name, constant_pool);
+                constant_pool->constants[i].field_ref = FieldRef_new(name, descriptor, class_name, constant_pool);
                 break;
             }
             case CONSTANT_InterfaceMethodref: {
@@ -85,6 +90,7 @@ ConstantPool_T ConstantPool_new(Class _class, struct ClassFile *class_file) {
                         constant_pool_info.info.interfaceMethodref_info.name_and_type_index);
                 char *name = ConstantPoolInfo_getUtf8String(class_file->constant_pool_info,
                                                             nameAndType_info.name_index);
+
                 char *descriptor = ConstantPoolInfo_getUtf8String(class_file->constant_pool_info,
                                                                   nameAndType_info.descriptor_index);
 

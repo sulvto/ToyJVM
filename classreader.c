@@ -23,7 +23,9 @@ const char *ATTRIBUTE_SourceFile = "SourceFile";
 const char *ATTRIBUTE_Synthetic = "Synthetic";
 
 
-static char *utf8String(const struct CONSTANT_Utf8_info *utf8_info);
+static char *utf8String(struct CONSTANT_Utf8_info *utf8_info);
+
+void freeString(char **str);
 
 
 u1 readU1(struct s_class_data *class_data) {
@@ -110,53 +112,43 @@ void readConstantPool(struct s_class_data *class_data, struct ClassFile *class_f
         if (tag == CONSTANT_Class) {
             struct CONSTANT_Class_info *class_info = &constantInfo->class_info;
             class_info->name_index = readU2(class_data);
-            printf("CONSTANT_Class\n");
         } else if (tag == CONSTANT_Fieldref) {
             struct CONSTANT_Fieldref_info *fieldref_info = &constantInfo->fieldref_info;
             fieldref_info->class_index = readU2(class_data);
             fieldref_info->name_and_type_index = readU2(class_data);
-            printf("CONSTANT_Fieldref\n");
         } else if (tag == CONSTANT_Methodref) {
             struct CONSTANT_Methodref_info *methodref_info = &constantInfo->methodref_info;
             methodref_info->class_index = readU2(class_data);
             methodref_info->name_and_type_index = readU2(class_data);
-            printf("CONSTANT_Methodref\n");
         } else if (tag == CONSTANT_InterfaceMethodref) {
             struct CONSTANT_InterfaceMethodref_info *interfaceMethodref_info = &constantInfo->interfaceMethodref_info;
             interfaceMethodref_info->class_index = readU2(class_data);
             interfaceMethodref_info->name_and_type_index = readU2(class_data);
-            printf("CONSTANT_InterfaceMethodref\n");
         } else if (tag == CONSTANT_String) {
             struct CONSTANT_String_info *string_info = &constantInfo->string_info;
             string_info->string_index = readU2(class_data);
-            printf("CONSTANT_String\n");
         } else if (tag == CONSTANT_Integer) {
             struct CONSTANT_Integer_info integer_info;
             integer_info.bytes = readU4(class_data);
             constantInfo->integer_info = integer_info;
-            printf("CONSTANT_Integer\n");
         } else if (tag == CONSTANT_Float) {
             struct CONSTANT_Float_info float_info;
             float_info.bytes = readU4(class_data);
             constantInfo->float_info = float_info;
-            printf("CONSTANT_Float\n");
         } else if (tag == CONSTANT_Long) {
             struct CONSTANT_Long_info long_info;
             long_info.high_bytes = readU4(class_data);
             long_info.low_bytes -= readU4(class_data);
             constantInfo->long_info = long_info;
-            printf("CONSTANT_Long\n");
         } else if (tag == CONSTANT_Double) {
             struct CONSTANT_Double_info double_info;
             double_info.high_bytes = readU4(class_data);
             constantInfo->double_info = double_info;
-            printf("CONSTANT_Double\n");
         } else if (tag == CONSTANT_NameAndType) {
             struct CONSTANT_NameAndType_info nameAndType_info;
             nameAndType_info.name_index = readU2(class_data);
             nameAndType_info.descriptor_index = readU2(class_data);
             constantInfo->nameAndType_info = nameAndType_info;
-            printf("CONSTANT_NameAndType\n");
         } else if (tag == CONSTANT_Utf8) {
             struct CONSTANT_Utf8_info *utf8_info = &constantInfo->utf8_info;
             utf8_info->length = readU2(class_data);
@@ -164,24 +156,20 @@ void readConstantPool(struct s_class_data *class_data, struct ClassFile *class_f
             for (u2 j = 0; j < utf8_info->length; j++) {
                 utf8_info->bytes[j] = readU1(class_data);
             }
-            printf("CONSTANT_Utf8\n");
         } else if (tag == CONSTANT_MethodHandle) {
             struct CONSTANT_MethodHandle_info methodHandle_info;
             methodHandle_info.reference_kind = readU1(class_data);
             methodHandle_info.reference_index = readU2(class_data);
             constantInfo->methodHandle_info = methodHandle_info;
-            printf("CONSTANT_MethodHandle\n");
         } else if (tag == CONSTANT_MethodType) {
             struct CONSTANT_MethodType_info methodType_info;
             methodType_info.descriptor_index = readU2(class_data);
             constantInfo->methodType_info = methodType_info;
-            printf("CONSTANT_MethodType\n");
         } else if (tag == CONSTANT_InvokeDynamic) {
             struct CONSTANT_InvokeDynamic_info invokeDynamic_info;
             invokeDynamic_info.bootstrap_method_attr_index = readU2(class_data);
             invokeDynamic_info.name_and_type_index = readU2(class_data);
             constantInfo->invokeDynamic_info = invokeDynamic_info;
-            printf("CONSTANT_InvokeDynamic\n");
         } else {
             printf("tag %x\n", tag);
             printf("Class format error! constant pool tag!\n");
@@ -202,7 +190,7 @@ struct ExceptionTable readExceptionTable(struct s_class_data *class_data) {
 
 
 struct AttributeInfo *readAttributes(struct s_class_data *class_data,
-                                    const struct ConstantPoolInfo *constant_pool_info) {
+                                    struct ConstantPoolInfo *constant_pool_info) {
     struct AttributeInfo *attributeInfo = (struct AttributeInfo *) malloc(sizeof(struct AttributeInfo));
 
     u2 attribute_name_index = readU2(class_data);
@@ -212,7 +200,7 @@ struct AttributeInfo *readAttributes(struct s_class_data *class_data,
     attributeInfo->attribute_length = attribute_length;
 
     char *attr_name = attributeName(attribute_name_index, constant_pool_info);
-    printf("readAttributes attr_name: %s\n", attr_name);
+
     attributeInfo->info = (union AttributeInfoUnion *) malloc(sizeof(union AttributeInfoUnion));
     if (strcmp(ATTRIBUTE_ConstantValue, attr_name) == 0) {
         attributeInfo->info->constant_value = (struct ConstantValue_attributeInfo *) malloc(
@@ -252,21 +240,19 @@ struct AttributeInfo *readAttributes(struct s_class_data *class_data,
             attributeInfo->info->unparsed->info[i] = readU1(class_data);
         }
     }
+
+    freeString(&attr_name);
     return attributeInfo;
 }
 
-struct MemberInfo readMember(struct s_class_data *class_data, const struct ConstantPoolInfo *constantPool) {
+struct MemberInfo readMember(struct s_class_data *class_data, struct ConstantPoolInfo *constantPool) {
     struct MemberInfo memberInfo;
-    printf("readMember\n");
     memberInfo.access_flags = readU2(class_data);
-    printf("readMember access_flags %d\n", memberInfo.access_flags);
     memberInfo.name_index = readU2(class_data);
-    printf("readMember name_index: %d\n", memberInfo.name_index);
     memberInfo.descriptor_index = readU2(class_data);
     memberInfo.attributes_count = readU2(class_data);
 
     memberInfo.attributes = (struct AttributeInfo *) malloc(sizeof(struct AttributeInfo) * memberInfo.attributes_count);
-    printf("readMember attributes_count: %d\n", memberInfo.attributes_count);
 
     for (int i = 0; i < memberInfo.attributes_count; i++) {
         memberInfo.attributes[i] = *readAttributes(class_data, constantPool);
@@ -276,12 +262,10 @@ struct MemberInfo readMember(struct s_class_data *class_data, const struct Const
 }
 
 void readFields(struct s_class_data *class_data, struct ClassFile *class_file) {
-    printf("readFields\n");
     int count = class_file->fields_count = readU2(class_data);
 
     class_file->fields = (struct MemberInfo *) malloc(sizeof(struct MemberInfo) * count);
 
-    printf("readFields fields_count: %d\n", class_file->fields_count);
     for (int i = 0; i < count; i++) {
         class_file->fields[i] = readMember(class_data, class_file->constant_pool_info);
     }
@@ -289,15 +273,13 @@ void readFields(struct s_class_data *class_data, struct ClassFile *class_file) {
 }
 
 void readMethods(struct s_class_data *class_data, struct ClassFile *class_file) {
-    printf("readMethods\n");
     int count = class_file->methods_count = readU2(class_data);
 
     class_file->methods = (struct MemberInfo *) malloc(sizeof(struct MemberInfo) * count);
-    printf("readMethods methods_count: %d\n", class_file->methods_count);
+
     for (int i = 0; i < count; i++) {
         class_file->methods[i] = readMember(class_data, class_file->constant_pool_info);
     }
-
 }
 
 static int readJAR(const char *path, const char *class_name, struct s_class_data *class_data) {
@@ -320,6 +302,7 @@ static int readJAR(const char *path, const char *class_name, struct s_class_data
             class_data->data = (u1) malloc(sizeof(u1) * zip_stat.size);
             class_data->index = 0;
             class_data->length = zip_stat.size;
+            // FIXME Segmentation fault 2018-5-22 01:14:00
             zip_fread(pzip_file, class_data->data, zip_stat.size);
 
             /* close archive */
@@ -402,15 +385,24 @@ void freeClassData(struct s_class_data **class_data) {
 struct s_class_data *readClassFile(const char *class_name) {
     struct s_class_data *class_data = malloc(sizeof(struct s_class_data));
 
-    if (readRootClasspath(class_name, class_data)) {
+    char search[strlen(class_name) + 7];
+    strcpy(search, class_name);
+
+    if (strstr(search, ".class") == NULL) {
+        // add .class
+        // java/lang/Object  -->  java/lang/Object.class
+        strcat(search, ".class");
+    }
+
+    if (readRootClasspath(search, class_data)) {
         return class_data;
     }
 
-    if (readExtClasspath(class_name, class_data)) {
+    if (readExtClasspath(search, class_data)) {
         return class_data;
     }
 
-    if (readUserClasspath(class_name, class_data)) {
+    if (readUserClasspath(search, class_data)) {
         return class_data;
     }
 
@@ -441,14 +433,9 @@ struct ClassFile parseClassContent(struct s_class_data *class_data) {
     return class_file;
 }
 
-static char *utf8String(const struct CONSTANT_Utf8_info *utf8_info) {
+static char *utf8String(struct CONSTANT_Utf8_info *utf8_info) {
     u2 length = utf8_info->length;
-    printf("utf8String length-> %d; ", length);
-
-    char *result = (char *) malloc(512);
-
-//    printf("malloc %p ", &result);
-
+    char *result = (char *) malloc((length + 1) * sizeof(char));
     for (int i = 0; i < length; ++i) {
         u1 byte = utf8_info->bytes[i];
         if (byte < 127) {
@@ -459,8 +446,8 @@ static char *utf8String(const struct CONSTANT_Utf8_info *utf8_info) {
             result[i] = '#';
         }
     }
+
     result[length] = '\0';
-    printf("utf8String result %d %s;\n", strlen(result), result);
 
     return result;
 }
@@ -473,26 +460,24 @@ struct CONSTANT_Class_info *classInfo(const u2 index, const struct ConstantPoolI
     return &constant_pool_info[index - 1].info.class_info;
 }
 
-char *className(const u2 class_index, const struct ConstantPoolInfo *constant_pool_info) {
+char *className(const u2 class_index, struct ConstantPoolInfo *constant_pool_info) {
     struct CONSTANT_Class_info *class_info = classInfo(class_index, constant_pool_info);
-    return ConstantPoolInfo_getUtf8String(constant_pool_info, class_info->name_index);
+   return ConstantPoolInfo_getUtf8String(constant_pool_info, class_info->name_index);
 }
 
-char *memberName(const struct MemberInfo *member, const struct ConstantPoolInfo *constant_pool_info) {
-    printf("memberName %d\n", member->name_index);
+char *memberName(struct MemberInfo *member, struct ConstantPoolInfo *constant_pool_info) {
     return ConstantPoolInfo_getUtf8String(constant_pool_info, member->name_index);
 }
 
-char *descriptor(const struct MemberInfo *member, const struct ConstantPoolInfo *constant_pool_info) {
-    printf("descriptor %d\n", member->descriptor_index);
+char *descriptor(struct MemberInfo *member, struct ConstantPoolInfo *constant_pool_info) {
     return ConstantPoolInfo_getUtf8String(constant_pool_info, member->descriptor_index);
 }
 
-char *attributeName(const u2 attribute_name_index, const struct ConstantPoolInfo *constant_pool_info) {
+char *attributeName(const u2 attribute_name_index, struct ConstantPoolInfo *constant_pool_info) {
     return ConstantPoolInfo_getUtf8String(constant_pool_info, attribute_name_index);
 }
 
-char *ConstantPoolInfo_getUtf8String(const struct ConstantPoolInfo *constant_pool_info, const u2 index) {
+char *ConstantPoolInfo_getUtf8String(struct ConstantPoolInfo *constant_pool_info, const u2 index) {
     struct CONSTANT_Utf8_info *info = utf8Info(index, constant_pool_info);
     return utf8String(info);
 }
@@ -503,6 +488,23 @@ struct CONSTANT_NameAndType_info ConstantPoolInfo_getNameAndType(const struct Co
     return constant_pool_info[index - 1].info.nameAndType_info;
 }
 
+void freeString(char **str) {
+    printf("freeString\n");
+    size_t len = strlen(*str);
+//    char *tmp = *str;
+//    printf("freeString %p\n", &tmp );
+//    printf("freeString %p\n", &(*tmp++) );
+//    for (int i = 0; i <= len; ++i) {
+//        printf("freeString 1 %c\n", *tmp );
+//        printf("freeString 1 %p\n", tmp++ );
+//        printf("freeString 1 %c\n", *(tmp+1) );
+////        free(tmp);
+//        printf("freeString 2 %c\n", *tmp );
+//    }
+//    tmp = NULL;
+//    *str = NULL;
+}
+
 struct AttributeInfo *codeAttribute(const struct MemberInfo *member,
                                              struct ConstantPoolInfo *constant_pool_info) {
     for (int i = 0; i < member->attributes_count; ++i) {
@@ -511,7 +513,7 @@ struct AttributeInfo *codeAttribute(const struct MemberInfo *member,
         if (strcmp(ATTRIBUTE_Code, name) == 0) {
             return &member->attributes[i];
         }
-
+        freeString(&name);
     }
 
     return NULL;
@@ -522,6 +524,7 @@ struct AttributeInfo *constantValueAttribute(const struct MemberInfo *member,
     for (int i = 0; i < member->attributes_count; ++i) {
         char *name = attributeName(member->attributes[i].attribute_name_index, constant_pool_info);
         if (strcmp(ATTRIBUTE_ConstantValue, name) == 0) {
+            freeString(&name);
             return &member->attributes[i];
         }
     }

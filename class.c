@@ -4,6 +4,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include "type.h"
 #include "flags.h"
 #include "class.h"
@@ -65,32 +66,53 @@ static char *getArrayClassName(char *class_name);
 
 void copyFieldInfo(struct MemberInfo *field_info, Field_T field, struct ConstantPoolInfo *constant_pool_info) {
     field->access_flags = field_info->access_flags;
+//    char *name = memberName(field_info, constant_pool_info);
+//    field->name = malloc(sizeof(char) * (strlen(name) + 1));
+//    strcpy(field->name, name);
+//    char *desc = descriptor(field_info, constant_pool_info);
+//    field->descriptor = malloc(sizeof(char) * (strlen(desc) + 1));
+//    strcpy(field->descriptor, desc);
+//    printf("field memberName %s\n", field->name);
+//    printf("field descriptor %s\n", field->descriptor);
+
     field->name = memberName(field_info, constant_pool_info);
     field->descriptor = descriptor(field_info, constant_pool_info);
+
     struct AttributeInfo *attribute_info = constantValueAttribute(field_info, constant_pool_info);
     if (attribute_info != NULL) {
-        field->const_value_index = attribute_info->info.constant_value.constant_value_index;
+        field->const_value_index = attribute_info->info->constant_value->constant_value_index;
     }
 }
 
 void copyMethodInfo(struct MemberInfo *method_info, Method_T method, struct ConstantPoolInfo *constant_pool_info) {
     method->access_flags = method_info->access_flags;
+//    char *name = memberName(method_info, constant_pool_info);
+//    char *desc = descriptor(method_info, constant_pool_info);
+//    method->name = malloc(sizeof(char) * strlen(name));
+//    method->descriptor = malloc(sizeof(char) * strlen(desc));
+//    strcpy(method->name, name);
+//    strcpy(method->descriptor, desc);
+//    printf("method memberName %s\n", method->name);
+//    printf("method descriptor %s\n", method->descriptor);
+
     method->name = memberName(method_info, constant_pool_info);
     method->descriptor = descriptor(method_info, constant_pool_info);
+
     struct AttributeInfo *attribute_info = codeAttribute(method_info, constant_pool_info);
     if (attribute_info != NULL) {
-        method->code = attribute_info->info.code.code;
-        method->max_locals = attribute_info->info.code.max_locals;
-        method->max_stack = attribute_info->info.code.max_stack;
-        method->code_length = attribute_info->info.code.code_length;
+        method->code = attribute_info->info->code->code;
+        method->max_locals = attribute_info->info->code->max_locals;
+        method->max_stack = attribute_info->info->code->max_stack;
+        method->code_length = attribute_info->info->code->code_length;
     }
 }
 
 Field_T *newFields(Class_T _class, struct ClassFile *class_file) {
     u2 fields_count = class_file->fields_count;
-    Field_T *fields = (Field_T*) malloc(sizeof(struct Field) * fields_count);
-    //
+    Field_T *fields = malloc(fields_count * sizeof(Field_T));
+
     for (int i = 0; i < fields_count; ++i) {
+        fields[i] = malloc(sizeof(Field_T));
         fields[i]->_class = _class;
         copyFieldInfo(&class_file->fields[i], fields[i], class_file->constant_pool_info);
     }
@@ -114,10 +136,12 @@ Method_T *newMethods(Class_T _class, struct ClassFile *class_file) {
 }
 
 Class_T Class_new(struct ClassFile *class_file) {
-    Class_T _class = (Class_T) malloc(sizeof(struct Class));
+    Class_T _class = (Class_T) malloc(1 * sizeof(struct Class));
     _class->access_flags = class_file->access_flags;
     _class->name = className(class_file->this_class, class_file->constant_pool_info);
-    _class->super_class_name = className(class_file->super_class, class_file->constant_pool_info);
+    _class->super_class_name = className(class_file->super_class,
+                                         class_file->constant_pool_info);
+
     // interfaces_count
     _class->constant_pool_count = class_file->constant_pool_count;
     _class->fields = newFields(_class, class_file);
@@ -135,7 +159,7 @@ Class_T Class_newArrayClass(u2 access_flags,char *name, void *loader, Class_T su
     _class->super_class = super_class;
     _class->super_class_name = super_class->name;
     _class->interface_count = 2;
-    _class->interface_class = (Class*) malloc(sizeof(struct Class) * 2);
+    _class->interface_class = (Class *) malloc(2 * sizeof(struct Class));
     _class->interface_class[0] = cloneable_class;
     _class->interface_class[1] = serializable_class;
     return _class;

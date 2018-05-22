@@ -8,6 +8,7 @@
 #include "type.h"
 #include "flags.h"
 #include "class.h"
+#include "IS.h"
 
 #define Field_T Field
 
@@ -63,6 +64,7 @@ struct Class_T {
 
 static char *getArrayClassName(char *class_name);
 
+static void injectCodeAttribute(Method_T, char*);
 
 void copyFieldInfo(struct MemberInfo *field_info, Field_T field, struct ConstantPoolInfo *constant_pool_info) {
     field->access_flags = field_info->access_flags;
@@ -112,20 +114,46 @@ Field_T *newFields(Class_T _class, struct ClassFile *class_file) {
     return fields;
 }
 
+Method_T newMethod(Class_T _class, struct ClassFile *class_file, struct MemberInfo       *member_info) {
+    Method_T method = malloc(sizeof(Method_T));
+    method ->_class = _class;
+    copyMethodInfo(member_info, method, class_file->constant_pool_info);
+
+    parseMethodDescriptor(method->descriptor);
+    calcArgSlotCount();
+    if (Method_isNative(method)) {
+        injectCodeAttribute(method, return_type);
+    }
+    return method;
+}
+
 Method_T *newMethods(Class_T _class, struct ClassFile *class_file) {
     u2 count = class_file->methods_count;
     Method_T *methods = (Method_T *) malloc(sizeof(struct Method) * count);
+
     for (int i = 0; i < count; ++i) {
-        methods[i] = malloc(sizeof(Method_T));
-        methods[i]->_class = _class;
-        copyMethodInfo(&class_file->methods[i], methods[i], class_file->constant_pool_info);
-        // TODO
-        if (isNative(methods[i]->access_flags)) {
-            // TODO
-        }
+        methods[i] = newMethod(_class, class_file, &class_file->methods[i]);
     }
 
     return methods;
+}
+
+static void injectCodeAttribute(Method_T _this, char *return_type) {
+    _this->max_stack = 4;
+    _this->max_locals = _this->arg_count;
+    _this->code = (u1 *) malloc(sizeof(u1) * 2);
+
+    _this->code[0] = INVOKENATIVE;
+
+    switch (return_type[0]) {
+        case 'V': _this->code[1] = RETURN;  break;
+        case 'D': _this->code[1] = DRETURN; break;
+        case 'F': _this->code[1] = FRETURN; break;
+        case 'J': _this->code[1] = LRETURN; break;
+        case 'L':
+        case '[': _this->code[1] = ARETURN; break;
+        default: _this->code[1] = IRETURN;  break;
+    }
 }
 
 Class_T Class_new(struct ClassFile *class_file) {
@@ -416,6 +444,10 @@ int Method_isStatic(Method_T _this) {
     return isStatic(_this->access_flags);
 }
 
+int Method_isNative(Method_T _this) {
+    return isNative(_this->access_flags);
+}
+
 int Method_isAbstract(Method_T _this) {
     return isAbstract(_this->access_flags);
 }
@@ -448,6 +480,14 @@ int Method_namecmp(Method_T _this, const char *name) {
     return strcmp(_this->name, name);
 }
 
+char *Method_name(Method_T _this) {
+    return _this->name;
+}
+
+char *Method_descriptor(Method_T _this) {
+    return _this->descriptor;
+}
+
 int Method_classcmp(Method_T _this, Class_T _class) {
     return _this->_class == _class;
 }
@@ -461,6 +501,15 @@ u1 *Method_code(Method_T _this) {
 }
 
 static Method_T Class_getStaticMethod(Class_T _class, char *name, char *descriptor) {
+    for (int i = 0; i < _class->methods_count; ++i) {
+        Method method = _class->methods[i];
+        if (Method_isStatic(method) &&
+            strcmp(method->name, name) == 0 &&
+            strcmp(method->descriptor, descriptor) == 0) {
+
+            return method;
+        }
+    }
     return NULL;
 }
 

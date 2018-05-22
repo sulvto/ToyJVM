@@ -141,6 +141,10 @@ int Method_isStatic(Method_T _this);
 
 int Method_namecmp(Method_T _this, const char *name);
 
+char *Method_name(Method_T _this);
+
+char *Method_descriptor(Method_T _this);
+
 int Method_classcmp(Method_T _this, Class_T _class);
 
 Class_T Method_class(Method_T _this);

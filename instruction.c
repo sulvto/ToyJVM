@@ -13,6 +13,7 @@
 #include "array.h"
 #include "instruction.h"
 #include "flags.h"
+#include "native.h"
 
 // array type
 #define AT_BOOLEAN  4
@@ -1413,6 +1414,21 @@ void invokedynamic_exe(union Context *context, Frame frame) {
 
 }
 
+void invokenative(union Context *context, Frame frame) {
+    Method method = Frame_method(frame);
+    char *class_name = Class_name(Method_class(method));
+    char *name = Method_name(method);
+    char *descriptor = Method_descriptor(method);
+    NativeMethod nativeMethod = NativeMethod_find(class_name, name, descriptor);
+
+    if (nativeMethod == NULL) {
+        // TODO
+        printf("java.lang.UnsatisfieLinkError: %s.%s%s\n", class_name, name, descriptor);
+    }
+    nativeMethod(frame);
+    
+}
+
 void new_exe(union Context *context, Frame frame) {
     Class current_class = Method_class((Method)Frame_method(frame));
     ClassRef class_ref = ConstantPool_classRef(Class_getConstantPool(current_class), context->index);
@@ -1974,6 +1990,8 @@ struct Instruction newInstruction(u1 opcode) {
         return makeInstruction(invokeinterface_fetchOp, invokeinterface_exe);
     } else if (INVOKEDYNAMIC == opcode) {
         return makeInstruction(nop_fetchOp, invokedynamic_exe);
+    } else if (INVOKENATIVE == opcode) {
+        return makeInstruction(nop_fetchOp, invokenative_exe);
     } else if (NEW == opcode) {
         return makeInstruction(index16_fetchOp, new_exe);
     } else if (NEWARRAY == opcode) {
@@ -2044,7 +2062,12 @@ int Object_isInterfaceOf(Object _this, Class _other) {
 
 
 void initSuperClass(Thread thread, Class _class) {
-
+    if (!Class_isInterface(_class)) {
+        Class super_class = Class_getSuperClass(_class);
+        if (super_class != NULL && !Class_isInterface(super_class)) {
+            initClass(thread, super_class);
+        }
+    }
 }
 
 void scheduleClinit(Thread thread, Class _class) {

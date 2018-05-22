@@ -13,6 +13,7 @@
 #include "interpreter.h"
 #include "map.h"
 #include "classloader.h"
+#include "native.h"
 
 //
 //// options
@@ -60,6 +61,11 @@
 //	}
 //}
 
+
+void registerNativeMethod() {
+    NativeMethod_register("java/lang/System", "arraycopy", "(Ljava/lang/Object;ILjava/lang/Object;II)V", arraycopy);
+}
+
 int main(int argc, char **argv) {
 //	static struct s_options options[] = {
 //		{HELP_FLAG, "help", null, "print help message", argv},
@@ -70,6 +76,8 @@ int main(int argc, char **argv) {
 //	};
 //
 //	OptInit(argv, options, stderr);
+
+    registerNativeMethod();
 
     ClassLoader loader = ClassLoader_new();
     Class _class = ClassLoader_loadClass(loader, "/home/qinchao/development/workspace/ToyJVM/Test.class");

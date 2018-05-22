@@ -299,10 +299,9 @@ static int readJAR(const char *path, const char *class_name, struct s_class_data
 
         if (strcmp(class_name, zip_stat.name) == 0) {
             struct zip_file *pzip_file = zip_fopen_index(p_zip, i, 0);
-            class_data->data = (u1) malloc(sizeof(u1) * zip_stat.size);
+            class_data->data = (u1 *) malloc(sizeof(u1) * zip_stat.size);
             class_data->index = 0;
             class_data->length = zip_stat.size;
-            // FIXME Segmentation fault 2018-5-22 01:14:00
             zip_fread(pzip_file, class_data->data, zip_stat.size);
 
             /* close archive */
@@ -419,7 +418,7 @@ struct ClassFile parseClassContent(struct s_class_data *class_data) {
     class_file.this_class = readU2(class_data);
     class_file.super_class = readU2(class_data);
     class_file.interfaces_count = readU2(class_data);
-    printf("readFields\n");
+
     // TODO interfaces
     readFields(class_data, &class_file);
     readMethods(class_data, &class_file);

@@ -72,12 +72,10 @@ int main(int argc, char **argv) {
 //	OptInit(argv, options, stderr);
 
     ClassLoader loader = ClassLoader_new();
-
-    Class _class = ClassLoader_loadClass(loader, "Test.class");
-
+    Class _class = ClassLoader_loadClass(loader, "/home/qinchao/development/workspace/ToyJVM/Test.class");
+    printf("Class_getMainMethod \n");
     Method mainMethod = Class_getMainMethod(_class);
 
-    printf("mainMethod != NULL\n");
     if (mainMethod != NULL) {
         interpret(mainMethod);
     } else {

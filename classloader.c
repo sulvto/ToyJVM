@@ -79,7 +79,7 @@ Class ClassLoader_loadNonArrayClass(ClassLoader_T _this, const char *name) {
         Class _class = ClassLoader_defineClass(_this, class_data);
 //        freeClassData(&class_data);
         link(_class);
-        printf("[Loaded %s from %s]\n", name, "from");
+        printf("[Loaded %s from %s]\n", name, ".");
         return _class;
     }
 }
@@ -87,7 +87,6 @@ Class ClassLoader_loadNonArrayClass(ClassLoader_T _this, const char *name) {
 
 void resolveSuperClass(Class _class) {
     if (strcmp(Class_name(_class), "java/lang/Object") != 0) {
-        // FIXME load java/lang/Object
         printf("_class->super_class_name %s\n", Class_superClassName(_class));
         Class_setSuperClass(_class, ClassLoader_loadClass(Class_loader(_class), Class_superClassName(_class)));
     } else {

@@ -66,17 +66,14 @@ static char *getArrayClassName(char *class_name);
 
 void copyFieldInfo(struct MemberInfo *field_info, Field_T field, struct ConstantPoolInfo *constant_pool_info) {
     field->access_flags = field_info->access_flags;
-//    char *name = memberName(field_info, constant_pool_info);
-//    field->name = malloc(sizeof(char) * (strlen(name) + 1));
-//    strcpy(field->name, name);
-//    char *desc = descriptor(field_info, constant_pool_info);
-//    field->descriptor = malloc(sizeof(char) * (strlen(desc) + 1));
-//    strcpy(field->descriptor, desc);
-//    printf("field memberName %s\n", field->name);
-//    printf("field descriptor %s\n", field->descriptor);
 
-    field->name = memberName(field_info, constant_pool_info);
-    field->descriptor = descriptor(field_info, constant_pool_info);
+    char *name = memberName(field_info, constant_pool_info);
+    field->name = malloc(sizeof(char) * (strlen(name) + 1));
+    strcpy(field->name, name);
+
+    char *desc = descriptor(field_info, constant_pool_info);
+    field->descriptor = malloc(sizeof(char) * (strlen(desc) + 1));
+    strcpy(field->descriptor, desc);
 
     struct AttributeInfo *attribute_info = constantValueAttribute(field_info, constant_pool_info);
     if (attribute_info != NULL) {
@@ -86,17 +83,12 @@ void copyFieldInfo(struct MemberInfo *field_info, Field_T field, struct Constant
 
 void copyMethodInfo(struct MemberInfo *method_info, Method_T method, struct ConstantPoolInfo *constant_pool_info) {
     method->access_flags = method_info->access_flags;
-//    char *name = memberName(method_info, constant_pool_info);
-//    char *desc = descriptor(method_info, constant_pool_info);
-//    method->name = malloc(sizeof(char) * strlen(name));
-//    method->descriptor = malloc(sizeof(char) * strlen(desc));
-//    strcpy(method->name, name);
-//    strcpy(method->descriptor, desc);
-//    printf("method memberName %s\n", method->name);
-//    printf("method descriptor %s\n", method->descriptor);
-
-    method->name = memberName(method_info, constant_pool_info);
-    method->descriptor = descriptor(method_info, constant_pool_info);
+    char *name = memberName(method_info, constant_pool_info);
+    char *desc = descriptor(method_info, constant_pool_info);
+    method->name = malloc(sizeof(char) * strlen(name));
+    method->descriptor = malloc(sizeof(char) * strlen(desc));
+    strcpy(method->name, name);
+    strcpy(method->descriptor, desc);
 
     struct AttributeInfo *attribute_info = codeAttribute(method_info, constant_pool_info);
     if (attribute_info != NULL) {
@@ -140,12 +132,17 @@ Class_T Class_new(struct ClassFile *class_file) {
     Class_T _class = (Class_T) malloc(sizeof(struct Class));
     _class->access_flags = class_file->access_flags;
     _class->name = className(class_file->this_class, class_file->constant_pool_info);
-    _class->super_class_name = className(class_file->super_class,
-                                         class_file->constant_pool_info);
-
+    if (class_file->super_class != 0) {
+        _class->super_class_name = className(class_file->super_class,
+                                             class_file->constant_pool_info);
+    }
     // interfaces_count
+    _class->interface_count = class_file->interfaces_count;
     _class->constant_pool_count = class_file->constant_pool_count;
+
+    _class->fields_count = class_file->fields_count;
     _class->fields = newFields(_class, class_file);
+    _class->methods_count = class_file->methods_count;
     _class->methods = newMethods(_class, class_file);
     return _class;
 }

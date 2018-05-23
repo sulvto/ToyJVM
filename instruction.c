@@ -40,6 +40,10 @@ Class arrayClass(Class _this);
 
 static void invokeMethod(Frame invoker_frame, Method method);
 
+static int findAndGotoExceptionHandler(Thread thread, Object ex);
+
+static int handlerUncaughtException(Thread thread, Object ex);
+
 void nop_fetchOp(union Context *context, struct Bytecode *data) {
     // noting to do
 }
@@ -1543,6 +1547,46 @@ void arraylength_exe(union Context *context, Frame frame) {
 }
 
 void athrow_exe(union Context *context, Frame frame) {
+    Object ex = Frame_popRef(frame);
+    if (ex == NULL) {
+        printf("java.lang.NullPointerException\n");
+    }
+
+    Thread thread = Frame_thread(frame);
+
+    if (!findAndGotoExceptionHandler(thread, ex)) {
+        handleUncaughtException(thread, ex);
+    }
+}
+
+static int findAndGotoExceptionHandler(Thread thread, Object ex) {
+    while (1) {
+    Frame frame = Thread_currentFrame(thread);
+    int pc = Frame_getNextPC(frame) - 1;
+
+    Method method = Frame_method(frame);
+    int handler_pc = Method_findExceptionHandler(method, Object_getClass(ex), pc);
+
+        if (handler_pc > 0) {
+            OperandStack stack = Frame_stack(frame);
+            OperandStack_clear(stack);
+            // TODO stack clear
+            Frame_pushRef(frame, ex);
+            Frame_setNextPC(frame, handler_pc);
+
+            return 1;
+        }
+
+        Thread_popFrame(thread);
+        if (Thread_isStackEmpty(thread)) {
+            break;
+        }
+    }
+
+    return 0;
+}
+
+static void handleUncaughtException(Thread thread, Object ex) {
 
 }
 

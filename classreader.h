@@ -35,7 +35,7 @@ struct ExceptionTable {
     u2 start_pc;
     u2 end_pc;
     u2 handler_pc;
-    u2 catch_pc;
+    u2 catch_type;
 };
 
 struct Code_attributeInfo {
@@ -44,7 +44,7 @@ struct Code_attributeInfo {
     u4 code_length;
     u1 *code;
     u2 exception_table_length;
-    struct ExceptionTable *exceptionTable;
+    struct ExceptionTable *exception_table;
     u2 attributes_count;
     struct AttributeInfo *attributes;
 };

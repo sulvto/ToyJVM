@@ -183,7 +183,7 @@ struct ExceptionTable readExceptionTable(struct s_class_data *class_data) {
     exceptionTable.start_pc = readU2(class_data);
     exceptionTable.end_pc = readU2(class_data);
     exceptionTable.handler_pc = readU2(class_data);
-    exceptionTable.catch_pc = readU2(class_data);
+    exceptionTable.catch_type = readU2(class_data);
 
     return exceptionTable;
 }
@@ -218,10 +218,10 @@ struct AttributeInfo *readAttributes(struct s_class_data *class_data,
         }
         u2 exception_table_length = readU2(class_data);
         attributeInfo->info->code->exception_table_length = exception_table_length;
-        attributeInfo->info->code->exceptionTable = (struct ExceptionTable *) malloc(
+        attributeInfo->info->code->exception_table = (struct ExceptionTable *) malloc(
                 sizeof(struct ExceptionTable) * exception_table_length);
         for (int j = 0; j < exception_table_length; ++j) {
-            attributeInfo->info->code->exceptionTable[j] = readExceptionTable(class_data);
+            attributeInfo->info->code->exception_table[j] = readExceptionTable(class_data);
         }
 
         u2 attributes_count = readU2(class_data);

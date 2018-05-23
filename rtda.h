@@ -40,6 +40,8 @@ Frame_T Thread_popFrame(Thread_T);
 
 Frame_T Thread_topFrame(Thread_T);
 
+Frame_T Thread_currentFrame(Thread_T);
+
 Object getRefFromStackTop(OperandStack_T stack, u4 i);
 
 void pushInt(const int, OperandStack_T);
@@ -109,6 +111,9 @@ void Object_setFields(Object_T _this, void *fields);
 
 void *Object_getFields(Object_T _this);
 
+void OperandStack_new(const unsigned int max);
+
+void OperandStack_clear(OperandStack_T);
 
 void Frame_pushInt(Frame_T frame, const int);
 
@@ -172,7 +177,7 @@ void Frame_setNextPC(Frame_T, int);
 
 int Frame_getNextPC(Frame_T);
 
-int Thread_empty(Thread_T);
+int Thread_isStackEmpty(Thread_T);
 
 void Thread_setPc(Thread_T, int);
 

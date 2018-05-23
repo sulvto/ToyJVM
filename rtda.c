@@ -87,11 +87,18 @@ Slots_T newSlots(const unsigned int max) {
     return slots;
 }
 
-OperandStack_T newOperandStack(const unsigned int max) {
+OperandStack_T OperandStack_new(const unsigned int max) {
     OperandStack_T operand_stack = (OperandStack_T)malloc(sizeof(struct OperandStack));
     operand_stack->size = 0;
     operand_stack->slot = (Slot_T*) malloc(sizeof(struct Slot) * max);
     return operand_stack;
+}
+
+void OperandStack_clear(OperandStack_T _this) {
+    for (int i = 0; i < _this->size; ++i) {
+        _this->slot[i] = NULL;
+    }
+    _this->size = 0;
 }
 
 
@@ -102,7 +109,7 @@ Object getRefFromStackTop(OperandStack_T stack, u4 i) {
 Frame_T newFrame(Thread_T thread, u4 max_locals, u4 max_stack, void *method) {
     Frame_T frame = (Frame_T) malloc(sizeof(struct Frame));
     frame->localVars = newSlots(max_locals);
-    frame->operand_stack = newOperandStack(max_stack);
+    frame->operand_stack = OperandStack_new(max_stack);
     frame->thread = thread;
     frame->method = method;
     return frame;
@@ -146,7 +153,11 @@ Frame_T Thread_topFrame(Thread_T _this) {
     return _this->stack->top;
 }
 
-int Thread_empty(Thread_T _this) {
+Frame_T Thread_currentFrame(Thread_T _this) {
+    // TODO
+}
+
+int Thread_isStackEmpty(Thread_T _this) {
     return _this->stack->top == NULL;
 }
 
@@ -168,6 +179,7 @@ int Frame_getNextPC(Frame_T frame) {
 
 
 void pushInt(const int value, OperandStack_T operandStack) {
+    operandStack->slot[operandStack->size] = malloc(sizeof(Slot_T));
     operandStack->slot[operandStack->size++]->num = value;
 }
 
@@ -229,6 +241,7 @@ Slot_T popSlot(OperandStack_T operandStack) {
 }
 
 void setInt(const unsigned int index, int value, Slots_T slots) {
+    slots->value[index] = malloc(sizeof(Slot_T));
     slots->value[index]->num = value;
 }
 

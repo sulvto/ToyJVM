@@ -9,6 +9,8 @@
 #include "flags.h"
 #include "class.h"
 #include "IS.h"
+#include "classref.h"
+#include "methoddescriptor.h"
 
 #define Field_T Field
 
@@ -25,6 +27,13 @@ struct Field_T {
     Class_T _class;
 };
 
+struct ExceptionHandler {
+    int start_pc;
+    int end_pc;
+    int handler_pc;
+    // ClassRef
+    struct ClassRef *catch_type;
+};
 
 struct Method_T {
     u2      access_flags;
@@ -36,6 +45,8 @@ struct Method_T {
     u1      *code;
     Class_T _class;
     u4      arg_count;
+    u4      exception_table_count;
+    struct ExceptionHandler *exception_table;
 };
 
 struct Class_T {
@@ -65,6 +76,9 @@ struct Class_T {
 static char *getArrayClassName(char *class_name);
 
 static void injectCodeAttribute(Method_T, char*);
+
+static void Method_calcArgCount(Method_T _this, struct MethodDescriptor *method_descriptor);
+
 
 void copyFieldInfo(struct MemberInfo *field_info, Field_T field, struct ConstantPoolInfo *constant_pool_info) {
     field->access_flags = field_info->access_flags;
@@ -118,13 +132,24 @@ Method_T newMethod(Class_T _class, struct ClassFile *class_file, struct MemberIn
     Method_T method = malloc(sizeof(Method_T));
     method ->_class = _class;
     copyMethodInfo(member_info, method, class_file->constant_pool_info);
-
-    parseMethodDescriptor(method->descriptor);
-    calcArgSlotCount();
+    struct MethodDescriptor *method_descriptor = MethodDescriptor_parse(method->descriptor);
+    Method_calcArgCount(method, method_descriptor);
     if (Method_isNative(method)) {
-        injectCodeAttribute(method, return_type);
+        injectCodeAttribute(method, method_descriptor->return_type);
     }
     return method;
+}
+
+static void Method_calcArgCount(Method_T _this, struct MethodDescriptor *method_descriptor) {
+
+    for (int i = 0; i < method_descriptor->parameter_type_count; ++i) {
+        char *str = method_descriptor->parameter_types[i];
+        _this->arg_count++;
+
+        if (strcmp(str, "J") || strcmp(str, "D")) {
+            _this->arg_count++;
+        }
+    }
 }
 
 Method_T *newMethods(Class_T _class, struct ClassFile *class_file) {
@@ -421,6 +446,26 @@ void Field_setSlotId(Field_T _this, u4 slot_id) {
 
 Class_T Field_class(Field_T _this) {
     return _this->_class;
+}
+
+int Method_findExceptionHandler(Method_T _this, Class_T ex_class, int pc) {
+    for (int i = 0; i < _this->exception_table_count; ++i) {
+        struct ExceptionHandler handler = _this->exception_table[i];
+        if (pc >= handler.start_pc && pc < handler.end_pc) {
+            if(handler.catch_type == NULL) {
+                // catch all
+                return handler.handler_pc;
+            }
+
+            Class catch_class = ClassRef_resolvedClass(handler.catch_type);
+
+            if (catch_class == ex_class || Class_isSuperClassOf(catch_class, ex_class)) {
+                return handler.handler_pc;
+            }
+        }
+    }
+
+    return -1;
 }
 
 int Method_isAccessibleTo(Method_T _this, Class_T other) {

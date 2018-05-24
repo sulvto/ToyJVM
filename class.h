@@ -123,6 +123,8 @@ void Field_setSlotId(Field_T, u4);
 
 Class_T Field_class(Field_T);
 
+int Method_findExceptionHandler(Method_T _this, Class_T _class, int pc);
+
 int Method_isAccessibleTo(Method_T _this, Class_T _other);
 
 u4 Method_maxLocals(Method_T _this);
@@ -138,6 +140,9 @@ int Method_isPrivate(Method_T _this);
 int Method_isProtected(Method_T _this);
 
 int Method_isStatic(Method_T _this);
+
+int Method_isNative(Method_T _this;
+
 
 int Method_namecmp(Method_T _this, const char *name);
 

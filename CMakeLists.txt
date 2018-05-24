@@ -5,7 +5,7 @@ PROJECT(ToyJVM)
 SET(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -g -Wall")
 
-SET(LIBZIP_SOURCES map.c flags.c classreader.c bytecode.c rtda.c class.c native.c array.c constantpool.c classref.c classloader.c interpreter.c instruction.c main.c)
+SET(LIBZIP_SOURCES map.c methoddescriptor.c flags.c classreader.c bytecode.c rtda.c class.c native.c array.c constantpool.c classref.c classloader.c interpreter.c instruction.c main.c)
 
 ADD_EXECUTABLE(ToyJVM ${LIBZIP_SOURCES})
 

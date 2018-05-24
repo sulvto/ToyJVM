@@ -44,7 +44,7 @@ struct Method_T {
     u4      code_length;
     u1      *code;
     Class_T _class;
-    u4      arg_count;
+    u4      arg_slot_count;
     u4      exception_table_count;
     struct ExceptionHandler *exception_table;
 };
@@ -77,7 +77,7 @@ static char *getArrayClassName(char *class_name);
 
 static void injectCodeAttribute(Method_T, char*);
 
-static void Method_calcArgCount(Method_T _this, struct MethodDescriptor *method_descriptor);
+static void Method_calcArgSlotCount(Method_T _this, struct MethodDescriptor *method_descriptor);
 
 
 void copyFieldInfo(struct MemberInfo *field_info, Field_T field, struct ConstantPoolInfo *constant_pool_info) {
@@ -140,14 +140,14 @@ Method_T newMethod(Class_T _class, struct ClassFile *class_file, struct MemberIn
     return method;
 }
 
-static void Method_calcArgCount(Method_T _this, struct MethodDescriptor *method_descriptor) {
+static void Method_calcArgSlotCount(Method_T _this, struct MethodDescriptor *method_descriptor) {
 
     for (int i = 0; i < method_descriptor->parameter_type_count; ++i) {
         char *str = method_descriptor->parameter_types[i];
-        _this->arg_count++;
+        _this->arg_slot_count++;
 
         if (strcmp(str, "J") || strcmp(str, "D")) {
-            _this->arg_count++;
+            _this->arg_slot_count++;
         }
     }
 }

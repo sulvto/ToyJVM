@@ -141,7 +141,7 @@ int Method_isProtected(Method_T _this);
 
 int Method_isStatic(Method_T _this);
 
-int Method_isNative(Method_T _this;
+int Method_isNative(Method_T _this);
 
 
 int Method_namecmp(Method_T _this, const char *name);

@@ -14,13 +14,13 @@
 typedef struct ClassRef_T *ClassRef_T;
 
 #define MethodRef_T MethodRef
-typedef struct MethodRef_T *MethodRef;
+typedef struct MethodRef_T *MethodRef_T;
 
 #define FieldRef_T FieldRef
-typedef struct FieldRef_T *FieldRef;
+typedef struct FieldRef_T *FieldRef_T;
 
 #define InterfaceMethodRef_T InterfaceMethodRef
-typedef struct InterfaceMethodRef_T *InterfaceMethodRef;
+typedef struct InterfaceMethodRef_T *InterfaceMethodRef_T;
 
 ClassRef_T ClassRef_new(char *class_name, ConstantPool constant_pool);
 

@@ -14,6 +14,7 @@
 #include "instruction.h"
 #include "flags.h"
 #include "native.h"
+#include "class.h"
 
 // array type
 #define AT_BOOLEAN  4
@@ -1418,6 +1419,10 @@ void invokedynamic_exe(union Context *context, Frame frame) {
 
 }
 
+void invokenative_exe(union Context *context, Frame frame) {
+
+}
+
 void invokenative(union Context *context, Frame frame) {
     Method method = Frame_method(frame);
     char *class_name = Class_name(Method_class(method));
@@ -1546,6 +1551,11 @@ void arraylength_exe(union Context *context, Frame frame) {
     // TODO
 }
 
+
+static void handleUncaughtException(Thread thread, Object ex) {
+
+}
+
 void athrow_exe(union Context *context, Frame frame) {
     Object ex = Frame_popRef(frame);
     if (ex == NULL) {
@@ -1586,9 +1596,6 @@ static int findAndGotoExceptionHandler(Thread thread, Object ex) {
     return 0;
 }
 
-static void handleUncaughtException(Thread thread, Object ex) {
-
-}
 
 void checkcast_exe(union Context *context, Frame frame) {
 

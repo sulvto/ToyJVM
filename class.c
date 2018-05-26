@@ -27,13 +27,13 @@ struct Field_T {
     Class_T _class;
 };
 
-//struct ExceptionHandler {
-//    int start_pc;
-//    int end_pc;
-//    int handler_pc;
-//    // ClassRef
-////    struct ClassRef *catch_type;
-//};
+struct ExceptionHandler {
+    int start_pc;
+    int end_pc;
+    int handler_pc;
+    // ClassRef
+    struct ClassRef *catch_type;
+};
 
 struct Method_T {
     u2      access_flags;
@@ -46,7 +46,7 @@ struct Method_T {
     Class_T _class;
     u4      arg_slot_count;
     u4      exception_table_count;
-//    struct ExceptionHandler *exception_table;
+    struct ExceptionHandler *exception_table;
 };
 
 struct Class_T {
@@ -134,11 +134,12 @@ Method_T newMethod(Class_T _class, struct ClassFile *class_file, struct MemberIn
     method ->_class = _class;
     copyMethodInfo(member_info, method, class_file->constant_pool_info);
 
-//    struct MethodDescriptor *method_descriptor = MethodDescriptor_parse(method->descriptor);
-//    Method_calcArgCount(method, method_descriptor);
-//    if (Method_isNative(method)) {
-//        injectCodeAttribute(method, method_descriptor->return_type);
-//    }
+    struct MethodDescriptor *method_descriptor = MethodDescriptor_parse(method->descriptor);
+    method->arg_slot_count = 0;
+    Method_calcArgSlotCount(method, method_descriptor);
+    if (Method_isNative(method)) {
+        injectCodeAttribute(method, method_descriptor->return_type);
+    }
 
     return method;
 }
@@ -165,17 +166,6 @@ Method_T *newMethods(Class_T _class, struct ClassFile *class_file) {
 
     return methods;
 }
-//static void Method_calcArgSlotCount(Method_T _this, struct MethodDescriptor *method_descriptor) {
-//
-//    for (int i = 0; i < method_descriptor->parameter_type_count; ++i) {
-//        char *str = method_descriptor->parameter_types[i];
-//        _this->arg_slot_count++;
-//
-//        if (strcmp(str, "J") || strcmp(str, "D")) {
-//            _this->arg_slot_count++;
-//        }
-//    }
-//}
 
 static void injectCodeAttribute(Method_T _this, char *return_type) {
     _this->max_stack = 4;

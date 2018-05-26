@@ -68,18 +68,21 @@ struct MethodDescriptor *MethodDescriptor_parse(char *descriptor) {
     // VoidDescriptor
     if (descriptor[index]=='V') {
         result->return_type = "V";
+        index++;
     } else {
         char *string = parseFieldType(descriptor, &index);
         if (string == NULL) {
-            result->return_type = string;
-        } else {
             printf("Error!\n");
+            exit(1);
+        } else {
+            result->return_type = string;
         }
     }
 
 
     if (index != length) {
         printf("error!\n");
+        exit(1);
     }
 
     return result;
@@ -87,7 +90,7 @@ struct MethodDescriptor *MethodDescriptor_parse(char *descriptor) {
 
 
 static char *parseFieldType(char *descriptor, int *offset) {
-    switch (descriptor[*offset++]) {
+    switch (descriptor[(*offset)++]) {
         case 'B': return "B";
         case 'C': return "C";
         case 'D': return "D";
@@ -99,7 +102,7 @@ static char *parseFieldType(char *descriptor, int *offset) {
         case 'L': return parseObjectType(descriptor, offset);
         case '[': return parseArrayType(descriptor, offset);
         default:
-            *offset--;
+            (*offset)--;
             return NULL;
     }
 }
@@ -122,7 +125,7 @@ static char *parseObjectType(char *descriptor, int *offset) {
     copy[i++] = *p; // ;
     copy[i] = '\0';
 
-   *offset += i;
+    (*offset) += i;
 
     char *result = malloc((size_t) i);
     strcpy(result, copy);

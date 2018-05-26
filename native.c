@@ -20,9 +20,9 @@ void init() {
 
 
 char *nativeMethodKey(const char *class_name, const char *method_name, const char *method_descriptor) {
-    char *class_name_cp;
-    char *method_name_cp;
-    char *method_descriptor_cp;
+    char class_name_cp[strlen(class_name)];
+    char method_name_cp[strlen(method_name)];
+    char method_descriptor_cp[strlen(method_descriptor)];
     strcpy(class_name_cp, class_name);
     strcpy(method_name_cp, method_name);
     strcpy(method_descriptor_cp, method_descriptor);

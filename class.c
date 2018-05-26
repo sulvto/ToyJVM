@@ -27,13 +27,13 @@ struct Field_T {
     Class_T _class;
 };
 
-struct ExceptionHandler {
-    int start_pc;
-    int end_pc;
-    int handler_pc;
-    // ClassRef
-    struct ClassRef *catch_type;
-};
+//struct ExceptionHandler {
+//    int start_pc;
+//    int end_pc;
+//    int handler_pc;
+//    // ClassRef
+////    struct ClassRef *catch_type;
+//};
 
 struct Method_T {
     u2      access_flags;
@@ -46,7 +46,7 @@ struct Method_T {
     Class_T _class;
     u4      arg_slot_count;
     u4      exception_table_count;
-    struct ExceptionHandler *exception_table;
+//    struct ExceptionHandler *exception_table;
 };
 
 struct Class_T {
@@ -81,6 +81,7 @@ static void Method_calcArgSlotCount(Method_T _this, struct MethodDescriptor *met
 
 
 void copyFieldInfo(struct MemberInfo *field_info, Field_T field, struct ConstantPoolInfo *constant_pool_info) {
+
     field->access_flags = field_info->access_flags;
 
     char *name = memberName(field_info, constant_pool_info);
@@ -97,7 +98,7 @@ void copyFieldInfo(struct MemberInfo *field_info, Field_T field, struct Constant
     }
 }
 
-void copyMethodInfo(struct MemberInfo *method_info, Method_T method, struct ConstantPoolInfo *constant_pool_info) {
+static void copyMethodInfo(struct MemberInfo *method_info, Method_T method, struct ConstantPoolInfo *constant_pool_info) {
     method->access_flags = method_info->access_flags;
     char *name = memberName(method_info, constant_pool_info);
     char *desc = descriptor(method_info, constant_pool_info);
@@ -132,11 +133,13 @@ Method_T newMethod(Class_T _class, struct ClassFile *class_file, struct MemberIn
     Method_T method = malloc(sizeof(Method_T));
     method ->_class = _class;
     copyMethodInfo(member_info, method, class_file->constant_pool_info);
-    struct MethodDescriptor *method_descriptor = MethodDescriptor_parse(method->descriptor);
-    Method_calcArgCount(method, method_descriptor);
-    if (Method_isNative(method)) {
-        injectCodeAttribute(method, method_descriptor->return_type);
-    }
+
+//    struct MethodDescriptor *method_descriptor = MethodDescriptor_parse(method->descriptor);
+//    Method_calcArgCount(method, method_descriptor);
+//    if (Method_isNative(method)) {
+//        injectCodeAttribute(method, method_descriptor->return_type);
+//    }
+
     return method;
 }
 
@@ -162,10 +165,21 @@ Method_T *newMethods(Class_T _class, struct ClassFile *class_file) {
 
     return methods;
 }
+//static void Method_calcArgSlotCount(Method_T _this, struct MethodDescriptor *method_descriptor) {
+//
+//    for (int i = 0; i < method_descriptor->parameter_type_count; ++i) {
+//        char *str = method_descriptor->parameter_types[i];
+//        _this->arg_slot_count++;
+//
+//        if (strcmp(str, "J") || strcmp(str, "D")) {
+//            _this->arg_slot_count++;
+//        }
+//    }
+//}
 
 static void injectCodeAttribute(Method_T _this, char *return_type) {
     _this->max_stack = 4;
-    _this->max_locals = _this->arg_count;
+    _this->max_locals = _this->arg_slot_count;
     _this->code = (u1 *) malloc(sizeof(u1) * 2);
 
     _this->code[0] = INVOKENATIVE;
@@ -449,21 +463,22 @@ Class_T Field_class(Field_T _this) {
 }
 
 int Method_findExceptionHandler(Method_T _this, Class_T ex_class, int pc) {
-    for (int i = 0; i < _this->exception_table_count; ++i) {
-        struct ExceptionHandler handler = _this->exception_table[i];
-        if (pc >= handler.start_pc && pc < handler.end_pc) {
-            if(handler.catch_type == NULL) {
-                // catch all
-                return handler.handler_pc;
-            }
 
-            Class catch_class = ClassRef_resolvedClass(handler.catch_type);
+//    for (int i = 0; i < _this->exception_table_count; ++i) {
+//        struct ExceptionHandler handler = _this->exception_table[i];
+//        if (pc >= handler.start_pc && pc < handler.end_pc) {
+//            if(handler.catch_type == NULL) {
+//                // catch all
+//                return handler.handler_pc;
+//            }
 
-            if (catch_class == ex_class || Class_isSuperClassOf(catch_class, ex_class)) {
-                return handler.handler_pc;
-            }
-        }
-    }
+//            Class catch_class = ClassRef_resolvedClass(handler.catch_type);
+
+//            if (catch_class == ex_class || Class_isSuperClassOf(catch_class, ex_class)) {
+//                return handler.handler_pc;
+//            }
+//        }
+//    }
 
     return -1;
 }
@@ -510,7 +525,7 @@ int Method_isPublic(Method_T _this) {
 }
 
 u4 Method_argCount(Method_T _this) {
-    return _this->arg_count;
+    return _this->arg_slot_count;
 }
 
 u4 Method_maxLocals(Method_T _this) {

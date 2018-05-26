@@ -63,7 +63,7 @@
 
 
 void registerNativeMethod() {
-    NativeMethod_register("java/lang/System", "arraycopy", "(Ljava/lang/Object;ILjava/lang/Object;II)V", arraycopy);
+    NativeMethod_register("java/lang/System", "arraycopy", "(Ljava/lang/Object;ILjava/lang/Object;II)V", NULL);
 }
 
 int main(int argc, char **argv) {

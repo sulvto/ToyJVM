@@ -111,7 +111,7 @@ void Object_setFields(Object_T _this, void *fields);
 
 void *Object_getFields(Object_T _this);
 
-void OperandStack_new(const unsigned int max);
+OperandStack_T OperandStack_new(const unsigned int max);
 
 void OperandStack_clear(OperandStack_T);
 

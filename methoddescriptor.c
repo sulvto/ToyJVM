@@ -45,7 +45,7 @@ struct MethodDescriptor *MethodDescriptor_parse(char *descriptor) {
     size_t length = strlen(descriptor);
     int index = 0;
     struct MethodDescriptor *result = (struct MethodDescriptor*) malloc(sizeof(struct MethodDescriptor));
-    result->parameter_type_index = 0;
+    result->parameter_type_count = 0;
 
     if (descriptor[index++] != '(') {
         return NULL;
@@ -57,7 +57,7 @@ struct MethodDescriptor *MethodDescriptor_parse(char *descriptor) {
         if (string == NULL) {
             break;
         } else {
-            result->parameter_types[parameter_type_index++] = string;
+            result->parameter_types[result->parameter_type_count++] = string;
         }
     }
     
@@ -122,7 +122,7 @@ static char *parseObjectType(char *descriptor, int *offset) {
     copy[i++] = *p; // ;
     copy[i] = '\0';
 
-    *offset += i;
+   *offset += i;
 
     char *result = malloc((size_t) i);
     strcpy(result, copy);

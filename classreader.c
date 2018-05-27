@@ -447,7 +447,7 @@ static char *utf8String(struct CONSTANT_Utf8_info *utf8_info) {
     }
 
     result[length] = '\0';
-
+    printf("utf8String result:%s\n", result);
     return result;
 }
 
@@ -485,6 +485,12 @@ char *ConstantPoolInfo_getUtf8String(struct ConstantPoolInfo *constant_pool_info
 struct CONSTANT_NameAndType_info ConstantPoolInfo_getNameAndType(const struct ConstantPoolInfo *constant_pool_info,
                                                                  const u2 index) {
     return constant_pool_info[index - 1].info.nameAndType_info;
+}
+
+
+struct CONSTANT_Class_info ConstantPoolInfo_getClass(const struct ConstantPoolInfo *constant_pool_info,
+                                                     const u2 index) {
+    return constant_pool_info[index - 1].info.class_info;
 }
 
 void freeString(char **str) {

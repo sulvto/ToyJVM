@@ -44,8 +44,7 @@ void loop(Thread thread) {
         free(context);
 
         // stack is empty.
-        // Thread_empty(thread)
-        if (1) {
+        if (Thread_empty(thread)) {
             break;
         }
     }

@@ -1018,10 +1018,12 @@ void return_exe(union Context *context, Frame frame) {
 }
 
 void getstatic_exe(union Context *context, Frame frame) {
-    Class current_class = Frame_method(frame);
+    
+    Method current_method = Frame_method(frame);
+    Class current_class = Method_class(current_method);
     FieldRef field_ref = ConstantPool_fieldRef(Class_getConstantPool(current_class), context->index);
-    Class _class = FieldRef_class(field_ref);
     Field field = FieldRef_resolvedField(field_ref);
+    Class _class = FieldRef_class(field_ref);
     // TODO
 
     if (!Field_isStatic(field)) {
@@ -2083,7 +2085,7 @@ struct Instruction newInstruction(u1 opcode) {
 Object newObject(Class _class) {
     Object object = (Object) malloc(sizeof(struct Object *));
     Object_setClass(object, _class);
-    Object_setFields(object, newSlots(Class_getInterfaceSlotCount(_class)));
+    Object_setFields(object, Slots_new(Class_getInterfaceSlotCount(_class)));
     // TODO
     return NULL;
 }

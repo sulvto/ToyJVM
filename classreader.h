@@ -204,6 +204,9 @@ char *ConstantPoolInfo_getUtf8String(struct ConstantPoolInfo *constant_pool_info
 struct CONSTANT_NameAndType_info ConstantPoolInfo_getNameAndType(const struct ConstantPoolInfo *constant_pool_info,
                                                                  const u2 index);
 
+struct CONSTANT_Class_info ConstantPoolInfo_getClass(const struct ConstantPoolInfo *constant_pool_info,
+                                                     const u2 index);
+
 struct AttributeInfo *constantValueAttribute(const struct MemberInfo *member,
                                              struct ConstantPoolInfo *constant_pool_info);
 

@@ -28,7 +28,7 @@ typedef struct Stack_T *Stack_T;
 #define Thread_T Thread
 typedef struct Thread_T *Thread_T;
 
-extern Slots_T newSlots(const unsigned int max);
+Slots_T Slots_new(const unsigned int max);
 
 Thread_T newThread();
 
@@ -41,6 +41,8 @@ Frame_T Thread_popFrame(Thread_T);
 Frame_T Thread_topFrame(Thread_T);
 
 Frame_T Thread_currentFrame(Thread_T);
+
+int Thread_empty(Thread_T);
 
 Object getRefFromStackTop(OperandStack_T stack, u4 i);
 

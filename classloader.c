@@ -203,7 +203,7 @@ static void initStaticFinalVar(Class _class, Field field) {
 }
 
 static void allocAndInitStaticVars(Class _class) {
-    Class_setStaticVars(_class, newSlots(Class_staticSlotCount(_class)));
+    Class_setStaticVars(_class, Slots_new(Class_staticSlotCount(_class)));
     u4 fields_count = Class_fieldsCount(_class);
     Field *fields = Class_fields(_class);
     for (int i = 0; i < fields_count; i++) {

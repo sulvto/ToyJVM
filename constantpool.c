@@ -77,7 +77,11 @@ ConstantPool_T ConstantPool_new(Class _class, struct ClassFile *class_file) {
                 char *descriptor = ConstantPoolInfo_getUtf8String(class_file->constant_pool_info,
                                                                   nameAndType_info.descriptor_index);
 
-                char *class_name = className(class_file->this_class, class_file->constant_pool_info);
+                struct CONSTANT_Class_info class_info = ConstantPoolInfo_getClass(class_file->constant_pool_info,
+                                                                                  constant_pool_info.info.fieldref_info.class_index);
+
+                char *class_name = ConstantPoolInfo_getUtf8String(class_file->constant_pool_info,
+                                                                  class_info.name_index);
 
                 constant_pool->constants[i].field_ref = FieldRef_new(name, descriptor, class_name, constant_pool);
                 break;
@@ -109,39 +113,39 @@ ConstantPool_T ConstantPool_new(Class _class, struct ClassFile *class_file) {
 
 
 int ConstantPool_intValue(ConstantPool_T constant_pool, int index) {
-    return constant_pool->constants[index].int_value;
+    return constant_pool->constants[index - 1].int_value;
 }
 
 long ConstantPool_longValue(ConstantPool_T constant_pool, int index) {
-    return constant_pool->constants[index].long_value;
+    return constant_pool->constants[index - 1].long_value;
 }
 
 float ConstantPool_floatValue(ConstantPool_T constant_pool, int index) {
-    return constant_pool->constants[index].float_value;
+    return constant_pool->constants[index - 1].float_value;
 }
 
 double ConstantPool_doubleValue(ConstantPool_T constant_pool, int index) {
-    return constant_pool->constants[index].double_value;
+    return constant_pool->constants[index - 1].double_value;
 }
 
 char *ConstantPool_stringValue(ConstantPool_T constant_pool, int index) {
-    return constant_pool->constants[index].string;
+    return constant_pool->constants[index - 1].string;
 }
 
 void *ConstantPool_fieldRef(ConstantPool_T constant_pool, int index) {
-    return constant_pool->constants[index].field_ref;
+    return constant_pool->constants[index - 1].field_ref;
 }
 
 void *ConstantPool_methodRef(ConstantPool_T constant_pool, int index) {
-    return constant_pool->constants[index].method_ref;
+    return constant_pool->constants[index - 1].method_ref;
 }
 
 void *ConstantPool_interfaceMethodRef(ConstantPool_T constant_pool, int index) {
-    return constant_pool->constants[index].interface_method_ref;
+    return constant_pool->constants[index - 1].interface_method_ref;
 }
 
 void *ConstantPool_classRef(ConstantPool_T constant_pool, int index) {
-    return constant_pool->constants[index].class_ref;
+    return constant_pool->constants[index - 1].class_ref;
 }
 
 Class ConstantPool_class(ConstantPool_T constant_pool) {

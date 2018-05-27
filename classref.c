@@ -255,7 +255,8 @@ void FieldRef_resolveClassRef(FieldRef_T field_ref) {
     Class d = ConstantPool_class(field_ref->constant_pool);
     Class c = ClassLoader_loadClass(Class_loader(d), field_ref->class_name);
     if (Class_isAccessibleTo(c, d) == 0) {
-        printf("java.lang.IllegalAccessError");
+        printf("java.lang.IllegalAccessError\n");
+        exit(1);
     }
     field_ref->_class = c;
 }

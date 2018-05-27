@@ -7,6 +7,7 @@
 #include <stddef.h>
 #include <malloc.h>
 #include <string.h>
+#include <stdlib.h>
 #include "rtda.h"
 #include "type.h"
 
@@ -63,7 +64,7 @@ struct Thread_T {
     Stack_T stack;
 };
 
-Stack_T newStack(const unsigned int size) {
+static Stack_T Stack_new(const unsigned int size) {
     Stack_T stack = (Stack_T) malloc(sizeof(struct Stack));
     stack->max_size = size;
     stack->size = 0;
@@ -74,12 +75,12 @@ Stack_T newStack(const unsigned int size) {
 
 Thread_T newThread() {
     Thread_T thread = (Thread_T) malloc(sizeof(struct Thread));
-    thread->stack = newStack(1024);
+    thread->stack = Stack_new(1024);
     thread->pc = 0;
     return thread;
 }
 
-Slots_T newSlots(const unsigned int max) {
+Slots_T Slots_new(const unsigned int max) {
     Slots_T slots = (Slots_T) malloc(sizeof(struct Slots));
     slots->size = 0;
     slots->max = max;
@@ -108,7 +109,7 @@ Object getRefFromStackTop(OperandStack_T stack, u4 i) {
 
 Frame_T newFrame(Thread_T thread, u4 max_locals, u4 max_stack, void *method) {
     Frame_T frame = (Frame_T) malloc(sizeof(struct Frame));
-    frame->localVars = newSlots(max_locals);
+    frame->localVars = Slots_new(max_locals);
     frame->operand_stack = OperandStack_new(max_stack);
     frame->thread = thread;
     frame->method = method;
@@ -155,6 +156,12 @@ Frame_T Thread_topFrame(Thread_T _this) {
 
 Frame_T Thread_currentFrame(Thread_T _this) {
     // TODO
+    printf("Thread_currentFrame Unimplemented!\n");
+    exit(1);
+}
+
+int Thread_empty(Thread_T _this) {
+    return _this->stack->size == 0;
 }
 
 int Thread_isStackEmpty(Thread_T _this) {

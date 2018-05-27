@@ -102,8 +102,9 @@ static void copyMethodInfo(struct MemberInfo *method_info, Method_T method, stru
     method->access_flags = method_info->access_flags;
     char *name = memberName(method_info, constant_pool_info);
     char *desc = descriptor(method_info, constant_pool_info);
-    method->name = malloc(sizeof(char) * strlen(name));
-    method->descriptor = malloc(sizeof(char) * strlen(desc));
+    method->name = (char *) malloc(sizeof(char) * (strlen(name) + 1));
+    method->descriptor = (char *) malloc(sizeof(char) * (strlen(desc) + 1));
+
     strcpy(method->name, name);
     strcpy(method->descriptor, desc);
 
@@ -281,7 +282,7 @@ char *Class_packageName(Class_T _this) {
         // Object
         return c;
     }
-    return NULL;
+    return "";
 }
 
 void *Class_loader(Class_T _class) {
@@ -350,7 +351,8 @@ Class *Class_interface(Class_T _class) {
 }
 
 int Class_isAccessibleTo(Class_T _this, Class_T other) {
-    return isPublic(_this->access_flags) || strcmp(Class_packageName(_this), Class_packageName(other)) == 0;
+    return isPublic(_this->access_flags) ||
+           strcmp(Class_packageName(_this), Class_packageName(other)) == 0;
 }
 
 int Class_isSubInterfaceOf(Class_T _this, Class_T other) {

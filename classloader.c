@@ -33,10 +33,19 @@ Class ClassLoader_loadArrayClass(ClassLoader_T _this, const char *name);
 
 static void initStaticFinalVar(Class _class, Field field);
 
+int classNameCmp(char *a, char *b) {
+    if (a == NULL && b == NULL) {
+        return 1;
+    }
+
+    return strcmp(a, b) == 0;
+}
+
 
 ClassLoader_T ClassLoader_new() {
     struct ClassLoader *loader = (struct ClassLoader *) malloc(sizeof(struct ClassLoader));
-    loader->class_map = Map_new(1000, NULL, NULL);
+    // FIXME string hashCode
+    loader->class_map = Map_new(1000, classNameCmp, NULL);
     return loader;
 }
 
@@ -68,7 +77,7 @@ Class ClassLoader_loadArrayClass(ClassLoader_T _this, const char *name) {
     return _class;
 }
 
-Class ClassLoader_loadNonArrayClass(ClassLoader_T _this, const char *name) {
+Class  ClassLoader_loadNonArrayClass(ClassLoader_T _this, const char *name) {
 
     struct s_class_data *class_data = readClassFile(name);
     if (class_data == NULL) {

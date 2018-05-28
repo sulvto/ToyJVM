@@ -30,9 +30,9 @@ void *Class_loader(Class_T);
 
 char *Class_name(Class_T _this);
 
-int Class_isSuperClassOf(Class_T _this, Class_T _other);
+int Class_isSuperClassOf(Class_T _this, Class_T other);
 
-int Class_isImplements(Class_T _this, Class_T _other);
+int Class_isImplements(Class_T _this, Class_T other);
 
 char *Class_packageName(Class_T _this);
 
@@ -68,9 +68,9 @@ Method_T Class_getClinitMethod(Class_T _class);
 
 int Class_isAccessibleTo(Class_T _this, Class_T other);
 
-int Class_isSubInterfaceOf(Class_T _this, Class_T _other);
+int Class_isSubInterfaceOf(Class_T _this, Class_T other);
 
-int Class_isSubClassOf(Class_T _this, Class_T _other);
+int Class_isSubClassOf(Class_T _this, Class_T other);
 
 Method_T Class_getMainMethod(Class_T _class);
 
@@ -125,7 +125,7 @@ Class_T Field_class(Field_T);
 
 int Method_findExceptionHandler(Method_T _this, Class_T _class, int pc);
 
-int Method_isAccessibleTo(Method_T _this, Class_T _other);
+int Method_isAccessibleTo(Method_T _this, Class_T other);
 
 u4 Method_maxLocals(Method_T _this);
 

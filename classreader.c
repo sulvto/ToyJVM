@@ -355,6 +355,10 @@ static int readExtClasspath(const char *class_name, struct s_class_data *class_d
 static int readUserClasspath(const char *class_name, struct s_class_data *class_data) {
     FILE *f;
     f = fopen(class_name, "r");
+    if (f == NULL) {
+        printf("Class file:%s not found!\n", class_name);
+        exit(1);
+    }
     int i = 0;
     u1 buf;
     // TODO 1024 ?/?

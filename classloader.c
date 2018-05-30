@@ -38,14 +38,22 @@ int classNameCmp(char *a, char *b) {
         return 1;
     }
 
-    return strcmp(a, b) == 0;
+    return strcmp(a, b);
 }
 
+int stringHashCode(char *string) {
+    int hash = 0;
+
+    for (int i = 0; i < strlen(string); ++i) {
+        hash = hash * 31 + string[i];
+    }
+
+    return hash;
+}
 
 ClassLoader_T ClassLoader_new() {
     struct ClassLoader *loader = (struct ClassLoader *) malloc(sizeof(struct ClassLoader));
-    // FIXME string hashCode
-    loader->class_map = Map_new(1000, classNameCmp, NULL);
+    loader->class_map = Map_new(1000, classNameCmp, stringHashCode);
     return loader;
 }
 

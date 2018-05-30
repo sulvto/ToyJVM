@@ -53,6 +53,7 @@ void loop(Thread thread) {
 void interpret(Method main_method) {
     Thread thread = newThread();
     Frame frame = newFrame(thread, Method_maxLocals(main_method), Method_maxStack(main_method), main_method);
+    printf("interpret %s\n", Method_name(main_method));
     Thread_pushFrame(thread, frame);
 
     loop(thread);

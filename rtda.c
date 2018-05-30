@@ -104,6 +104,9 @@ void OperandStack_clear(OperandStack_T _this) {
 
 
 Object getRefFromStackTop(OperandStack_T stack, u4 i) {
+    if (stack->size == 0) {
+        return NULL;
+    }
     return stack->slot[stack->size - 1 - i]->ref;
 }
 
@@ -184,6 +187,9 @@ int Frame_getNextPC(Frame_T frame) {
     return frame->nextPC;
 }
 
+void OperandStack_push(OperandStack_T operandStack) {
+    operandStack->slot[operandStack->size] = malloc(sizeof(Slot_T));
+}
 
 void pushInt(const int value, OperandStack_T operandStack) {
     operandStack->slot[operandStack->size] = malloc(sizeof(Slot_T));
@@ -210,6 +216,7 @@ void pushRef(const Object_T value, OperandStack_T operandStack) {
 }
 
 void pushSlot(const Slot_T slot, OperandStack_T operandStack) {
+    OperandStack_push(operandStack);
     struct Slot *target = operandStack->slot[operandStack->size++];
     target->num = slot->num;
     target->ref = slot->ref;

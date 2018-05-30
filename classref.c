@@ -154,17 +154,20 @@ void MethodRef_resolveMethodRef(MethodRef_T method_ref) {
     Class c = MethodRef_resolvedClass(method_ref);
 
     if (Class_isInterface(c)) {
-        printf("java.lang.IncompatibleClassChangeError");
+        printf("java.lang.IncompatibleClassChangeError\n");
+        exit(1);
     }
 
     Method method = Class_lookupMethod(c, method_ref->name, method_ref->descriptor);
 
     if (method == NULL) {
-        printf("java.lang.NoSuchMethodError");
+        printf("java.lang.NoSuchMethodError\n");
+        exit(1);
     }
 
     if (!Method_isAccessibleTo(method, d)) {
-        printf("java.lang.IllegalAccessError");
+        printf("java.lang.IllegalAccessError\n");
+        exit(1);
     }
 
     method_ref->method = method;

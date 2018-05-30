@@ -4,48 +4,36 @@
 
 #include <string.h>
 #include <zlib.h>
+#include "map.h"
 #include "type.h"
 
-//const unsigned
-char *test = "(ppppppppppppppppppppppppppppppppppppppppppppppppppppp)";
-
-char *test2 = "[aaaa]";
-
-void getName(char **name, int s) {
-    size_t len = (s == 1) ? strlen(test) : strlen(test2);
-    *name = malloc(len + 1);
-
-
-
-    for (int i = 0; i < len; ++i) {
-        (*name)[i] = (s == 1) ? test[i] : test2[i];
+int classNameCmp(char *a, char *b) {
+    if (a == NULL && b == NULL) {
+        return 1;
     }
 
-    (*name)[len] = '\0';
-
-    printf("getName %d %p %s\n", strlen(*name), &*name, *name);
-
+    return strcmp(a, b);
 }
 
-void g(char **name, int s) {
-    getName(name, s);
+int stringHashCode(char *string) {
+    int hash = 0;
+
+    for (int i = 0; i < strlen(string); ++i) {
+        hash = hash * 31 + string[i];
+    }
+    printf("hash %s\n", string);
+    printf("hash %d\n", hash);
+    return hash;
 }
 
-struct A {
-    char *name;
-    char *desc;
-};
 int main() {
-    struct A a;
 
+    Map_T map = Map_new(1000, classNameCmp, stringHashCode);
+    char *key = "ssss";
+    Map_put(map, "ssss", "aaaa");
 
-        printf("name :%p, %s\n", a.name, a.name);
-    g(&a.desc, 2);
-    printf("name :%p, %s\n", &a.name, a.name);
-    g(&a.name, 1);
-
-    printf("name :%p, %s\n", &a.name, a.name);
-    printf("desc :%p, %s\n", &a.desc,a.desc);
-
+    char *result = (char *) Map_get(map, "ssss");
+    printf("%s\n", "a");
+    printf("%s\n", result);
     return 0;
 }

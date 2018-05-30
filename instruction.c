@@ -3,7 +3,6 @@
 //
 
 #include <stdlib.h>
-#include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include "rtda.h"
@@ -12,9 +11,7 @@
 #include "classref.h"
 #include "array.h"
 #include "instruction.h"
-#include "flags.h"
 #include "native.h"
-#include "class.h"
 
 // array type
 #define AT_BOOLEAN  4
@@ -478,6 +475,8 @@ void pop2_exe(union Context *context, Frame frame) {
 }
 
 void dup_exe(union Context *context, Frame frame) {
+
+    printf("dup_exe %s\n", Method_name(Frame_method(frame)));
     Slot slot = Frame_popSlot(frame);
     Frame_pushSlot(frame, slot);
     Frame_pushSlot(frame, slot);
@@ -1018,7 +1017,7 @@ void return_exe(union Context *context, Frame frame) {
 }
 
 void getstatic_exe(union Context *context, Frame frame) {
-    
+
     Method current_method = Frame_method(frame);
     Class current_class = Method_class(current_method);
     FieldRef field_ref = ConstantPool_fieldRef(Class_getConstantPool(current_class), context->index);
@@ -1136,7 +1135,8 @@ void getfield_exe(union Context *context, Frame frame) {
     u4 slot_id = Field_getSlotId(field);
     struct Object *ref = Frame_popRef(frame);
     if (ref == NULL) {
-        printf("java.lang.NullPointerException");
+        printf("java.lang.NullPointerException\n");
+        exit(1);
     }
 
     Slots slots = Object_getFields(ref);
@@ -1196,7 +1196,8 @@ void putfield_exe(union Context *context, Frame frame) {
             int value = Frame_popInt(frame);
             Object ref = Frame_popRef(frame);
             if (ref == NULL) {
-                printf("java.lang.NullPointerException");
+                printf("java.lang.NullPointerException\n");
+                exit(1);
             }
 
             Object_setInt(ref, slot_id, value);
@@ -1206,7 +1207,8 @@ void putfield_exe(union Context *context, Frame frame) {
             float value = Frame_popFloat(frame);
             Object ref = Frame_popRef(frame);
             if (ref == NULL) {
-                printf("java.lang.NullPointerException");
+                printf("java.lang.NullPointerException\n");
+                exit(1);
             }
 
             Object_setFloat(ref, slot_id, value);
@@ -1216,7 +1218,8 @@ void putfield_exe(union Context *context, Frame frame) {
             long value = Frame_popLong(frame);
             Object ref = Frame_popRef(frame);
             if (ref == NULL) {
-                printf("java.lang.NullPointerException");
+                printf("java.lang.NullPointerException\n");
+                exit(1);
             }
 
             Object_setLong(ref, slot_id, value);
@@ -1227,6 +1230,7 @@ void putfield_exe(union Context *context, Frame frame) {
             Object ref = Frame_popRef(frame);
             if (ref == NULL) {
                 printf("java.lang.NullPointerException\n");
+                exit(1);
             }
 
             Object_setDouble(ref, slot_id, d);
@@ -1237,7 +1241,8 @@ void putfield_exe(union Context *context, Frame frame) {
             Object value = Frame_popRef(frame);
             Object ref = Frame_popRef(frame);
             if (ref == NULL) {
-                printf("java.lang.NullPointerException");
+                printf("java.lang.NullPointerException\n");
+                exit(1);
             }
 
             Object_setRef(ref, slot_id, value);
@@ -1247,93 +1252,6 @@ void putfield_exe(union Context *context, Frame frame) {
             break;
     }
 }
-
-
-void invokevirtual_exe(union Context *context, Frame frame) {
-    Class current_class = Method_class((Method)Frame_method(frame));
-    MethodRef method_ref = ConstantPool_methodRef(Class_getConstantPool(current_class), context->index);
-
-    Method resolved_method = MethodRef_resolvedMethod(method_ref);
-
-    if (Method_isStatic(resolved_method)) {
-        printf("java.lang.IncompatibleClassChangeError");
-    }
-
-    OperandStack stack = Frame_stack(frame);
-    Object ref = getRefFromStackTop(stack, Method_argCount(resolved_method) - 1);
-    if (ref == NULL) {
-        if (strcmp(MethodRef_name(method_ref), "println") == 0) {
-            // TODO
-            _println(stack, MethodRef_descriptor(method_ref));
-        } else {
-            printf("java.lang.NullPointerException");
-        }
-    }
-
-    if (Method_isProtected(resolved_method) &&
-        Class_isSuperClassOf(Method_class(resolved_method), current_class) &&
-        strcmp(Class_packageName(Method_class(resolved_method)), Class_packageName(current_class)) != 0 &&
-            Object_getClass(ref) != current_class &&
-        !Class_isSuperClassOf(Object_getClass(ref), current_class)
-            ) {
-        printf("java.lang.IllegalAccessError");
-    }
-
-    Method invoke_method = Class_lookupMethodInClass(Object_getClass(ref), MethodRef_name(method_ref), MethodRef_descriptor(method_ref));
-
-    if (invoke_method == NULL || Method_isAbstract(invoke_method)) {
-        printf("java.lang.AbstractMethodError");
-    }
-
-    invokeMethod(frame, invoke_method);
-
-}
-
-void invokespecial_exe(union Context *context, Frame frame) {
-    Class current_class = Method_class((Method)Frame_method(frame));
-    MethodRef method_ref = ConstantPool_methodRef(Class_getConstantPool(current_class), context->index);
-    Class resolved_class = MethodRef_resolvedClass(method_ref);
-
-    Method resolved_method = MethodRef_resolvedMethod(method_ref);
-
-    if (Method_namecmp(resolved_method, "<init>") == 0 && Method_class(resolved_method) != resolved_class) {
-        printf("java.lang.NoSuchMethodError");
-    }
-
-    if (Method_isStatic(resolved_method)) {
-        printf("java.lang.IncompatibleClassChangeError");
-    }
-
-    // get ref from top
-    Object ref = getRefFromStackTop(Frame_stack(frame), Method_argCount(resolved_method));
-    if (ref == NULL) {
-        printf("java.lang.NullPointerException");
-    }
-
-    if (Method_isProtected(resolved_method) &&
-        Class_isSuperClassOf(Method_class(resolved_method), current_class) &&
-        strcmp(Class_packageName(Method_class(resolved_method)), Class_packageName(current_class)) != 0 &&
-        Object_getClass(ref) != current_class &&
-        !Class_isSuperClassOf(Object_getClass(ref), current_class)
-            ) {
-        printf("java.lang.IllegalAccessError");
-    }
-
-    Method invoke_method = resolved_method;
-    if (Class_isSuper(current_class) &&
-        Class_isSuperClassOf(resolved_class, current_class) &&
-        Method_namecmp(resolved_method, "<init>") != 0) {
-        invoke_method = MethodRef_lookupMethodInClass(method_ref, Class_getSuperClass(current_class));
-    }
-
-    if (invoke_method == NULL || Method_isAbstract(invoke_method)) {
-        printf("java.lang.AbstractMethodError");
-    }
-
-    invokeMethod(frame, invoke_method);
-}
-
-
 
 
 void _println(struct OperandStack *stack, char *descriptor) {
@@ -1359,6 +1277,110 @@ void _println(struct OperandStack *stack, char *descriptor) {
     }
     popRef(stack);
 }
+
+void invokevirtual_exe(union Context *context, Frame frame) {
+    Class current_class = Method_class((Method) Frame_method(frame));
+    MethodRef method_ref = ConstantPool_methodRef(Class_getConstantPool(current_class), context->index);
+
+    OperandStack stack = Frame_stack(frame);
+    if (strcmp(MethodRef_name(method_ref), "println") == 0) {
+        // TODO
+        _println(stack, MethodRef_descriptor(method_ref));
+        return;
+    }
+    Method resolved_method = MethodRef_resolvedMethod(method_ref);
+
+    if (Method_isStatic(resolved_method)) {
+        printf("java.lang.IncompatibleClassChangeError\n");
+        exit(1);
+    }
+
+
+    Object ref = getRefFromStackTop(stack, Method_argCount(resolved_method) - 1);
+
+    if (ref == NULL) {
+        if (strcmp(MethodRef_name(method_ref), "println") == 0) {
+            // TODO
+            _println(stack, MethodRef_descriptor(method_ref));
+        } else {
+            printf("java.lang.NullPointerException\n");
+            exit(1);
+        }
+    }
+
+    if (Method_isProtected(resolved_method) &&
+        Class_isSuperClassOf(Method_class(resolved_method), current_class) &&
+        strcmp(Class_packageName(Method_class(resolved_method)), Class_packageName(current_class)) != 0 &&
+        Object_getClass(ref) != current_class &&
+        !Class_isSuperClassOf(Object_getClass(ref), current_class)
+            ) {
+        printf("java.lang.IllegalAccessError\n");
+        exit(1);
+    }
+
+    Method invoke_method = Class_lookupMethodInClass(Object_getClass(ref), MethodRef_name(method_ref),
+                                                     MethodRef_descriptor(method_ref));
+
+    if (invoke_method == NULL || Method_isAbstract(invoke_method)) {
+        printf("java.lang.AbstractMethodError\n");
+        exit(1);
+    }
+
+    invokeMethod(frame, invoke_method);
+
+}
+
+void invokespecial_exe(union Context *context, Frame frame) {
+    Class current_class = Method_class((Method) Frame_method(frame));
+    MethodRef method_ref = ConstantPool_methodRef(Class_getConstantPool(current_class), context->index);
+    Class resolved_class = MethodRef_resolvedClass(method_ref);
+
+    Method resolved_method = MethodRef_resolvedMethod(method_ref);
+
+    if (Method_namecmp(resolved_method, "<init>") == 0 && Method_class(resolved_method) != resolved_class) {
+        printf("java.lang.NoSuchMethodError\n");
+        exit(1);
+    }
+
+    if (Method_isStatic(resolved_method)) {
+        printf("java.lang.IncompatibleClassChangeError\n");
+        exit(1);
+    }
+
+    printf("invokespecial_exe %s\n", Method_name(resolved_method));
+
+    // get ref from top
+    Object ref = getRefFromStackTop(Frame_stack(frame), Method_argCount(resolved_method));
+    if (ref == NULL) {
+        printf("java.lang.NullPointerException\n");
+        exit(1);
+    }
+
+    if (Method_isProtected(resolved_method) &&
+        Class_isSuperClassOf(Method_class(resolved_method), current_class) &&
+        strcmp(Class_packageName(Method_class(resolved_method)), Class_packageName(current_class)) != 0 &&
+        Object_getClass(ref) != current_class &&
+        !Class_isSuperClassOf(Object_getClass(ref), current_class)
+            ) {
+        printf("java.lang.IllegalAccessError\n");
+        exit(1);
+    }
+
+    Method invoke_method = resolved_method;
+    if (Class_isSuper(current_class) &&
+        Class_isSuperClassOf(resolved_class, current_class) &&
+        Method_namecmp(resolved_method, "<init>") != 0) {
+        invoke_method = MethodRef_lookupMethodInClass(method_ref, Class_getSuperClass(current_class));
+    }
+
+    if (invoke_method == NULL || Method_isAbstract(invoke_method)) {
+        printf("java.lang.AbstractMethodError\n");
+        exit(1);
+    }
+
+    invokeMethod(frame, invoke_method);
+}
+
 
 void invokestatic_exe(union Context *context, Frame frame) {
     Method method = Frame_method(frame);
@@ -1387,31 +1409,36 @@ void invokeinterface_fetchOp(union Context *context, struct Bytecode *data) {
 }
 
 void invokeinterface_exe(union Context *context, Frame frame) {
-    Class current_class = Method_class((Method)Frame_method(frame));
+    Class current_class = Method_class((Method) Frame_method(frame));
     ConstantPool constant_pool = Class_getConstantPool(current_class);
     InterfaceMethodRef interface_method_ref = ConstantPool_interfaceMethodRef(constant_pool, context->index);
     Method resolved_method = InterfaceMethodRef_resolvedInterfaceMethod(interface_method_ref);
     if (Method_isStatic(resolved_method) || Method_isPrivate(resolved_method)) {
-        printf("java.lang.IncompatibleClassChangeError");
+        printf("java.lang.IncompatibleClassChangeError\n");
+        exit(1);
     }
 
     Object ref = getRefFromStackTop(Frame_stack(frame), Method_argCount(resolved_method) - 1);
     if (ref == NULL) {
-        printf("java.lang.NullPointerException");
+        printf("java.lang.NullPointerException\n");
+        exit(1);
     }
 
     Class method_class = InterfaceMethodRef_resolvedClass(interface_method_ref);
     if (!Class_isImplements(Object_getClass(ref), method_class)) {
-        printf("java.lang.IncompatibleClassChangeError");
+        printf("java.lang.IncompatibleClassChangeError\n");
+        exit(1);
     }
 
     Method invoke_method = InterfaceMethodRef_lookupMethodInClass(interface_method_ref, Object_getClass(ref));
     if (invoke_method == NULL || Method_isAbstract(invoke_method)) {
-        printf("java.lang.AbstractMethodError");
+        printf("java.lang.AbstractMethodError\n");
+        exit(1);
     }
 
     if (!Method_isPublic(invoke_method)) {
-        printf("java.lang.IllegalAccessError");
+        printf("java.lang.IllegalAccessError\n");
+        exit(1);
     }
 
     invokeMethod(frame, invoke_method);
@@ -1437,11 +1464,11 @@ void invokenative(union Context *context, Frame frame) {
         printf("java.lang.UnsatisfieLinkError: %s.%s%s\n", class_name, name, descriptor);
     }
     nativeMethod(frame);
-    
+
 }
 
 void new_exe(union Context *context, Frame frame) {
-    Class current_class = Method_class((Method)Frame_method(frame));
+    Class current_class = Method_class((Method) Frame_method(frame));
     ClassRef class_ref = ConstantPool_classRef(Class_getConstantPool(current_class), context->index);
     // TODO free?
     Class _class = ClassRef_resolvedClass(class_ref);
@@ -1471,7 +1498,7 @@ void newarray_exe(union Context *context, Frame frame) {
         printf("java.lang.NegativeArraySizeException\n");
     }
 
-    Class current_class = Method_class((Method)Frame_method(frame));
+    Class current_class = Method_class((Method) Frame_method(frame));
     ClassLoader loader = Class_loader(current_class);
     Class array_class = getPrimitiveArrayClass(loader, context->atype);
     Object array = newArray(array_class, count);
@@ -1497,12 +1524,13 @@ Class getPrimitiveArrayClass(ClassLoader loader, unsigned int atype) {
             return ClassLoader_loadClass(loader, "[F");
         case AT_DOUBLE:
             return ClassLoader_loadClass(loader, "[D");
-        default:    printf("Invalid atype!\n");
+        default:
+            printf("Invalid atype!\n");
     }
 }
 
 void anewarray_exe(union Context *context, Frame frame) {
-    Class current_class = Method_class((Method)Frame_method(frame));
+    Class current_class = Method_class((Method) Frame_method(frame));
     ClassRef class_ref = ConstantPool_classRef(Class_getConstantPool(current_class), context->index);
     ClassRef_resolveClassRef(class_ref);
     int count = Frame_popInt(frame);
@@ -1573,11 +1601,11 @@ void athrow_exe(union Context *context, Frame frame) {
 
 static int findAndGotoExceptionHandler(Thread thread, Object ex) {
     while (1) {
-    Frame frame = Thread_currentFrame(thread);
-    int pc = Frame_getNextPC(frame) - 1;
+        Frame frame = Thread_currentFrame(thread);
+        int pc = Frame_getNextPC(frame) - 1;
 
-    Method method = Frame_method(frame);
-    int handler_pc = Method_findExceptionHandler(method, Object_getClass(ex), pc);
+        Method method = Frame_method(frame);
+        int handler_pc = Method_findExceptionHandler(method, Object_getClass(ex), pc);
 
         if (handler_pc > 0) {
             OperandStack stack = Frame_stack(frame);
@@ -1611,7 +1639,7 @@ void instanceof_exe(union Context *context, Frame frame) {
         return;
     }
 
-    Class current_class = Method_class((Method)Frame_method(frame));
+    Class current_class = Method_class((Method) Frame_method(frame));
     ClassRef class_ref = ConstantPool_classRef(Class_getConstantPool(current_class), context->index);
 
     ClassRef_resolveClassRef(class_ref);
@@ -1669,415 +1697,417 @@ struct Instruction makeInstruction(FetchOperands fetchOperands, Execute execute)
 }
 
 struct Instruction newInstruction(u1 opcode) {
-    if (NOP == opcode) {
-        return makeInstruction(nop_fetchOp, nop_exe);
-    } else if (ACONST_NULL == opcode) {
-        return makeInstruction(nop_fetchOp, aconst_null_exe);
-    } else if (ICONST_M1 == opcode) {
-        return makeInstruction(nop_fetchOp, iconst_m1_exe);
-    } else if (ICONST_0 == opcode) {
-        return makeInstruction(nop_fetchOp, iconst_0_exe);
-    } else if (ICONST_1 == opcode) {
-        return makeInstruction(nop_fetchOp, iconst_1_exe);
-    } else if (ICONST_2 == opcode) {
-        return makeInstruction(nop_fetchOp, iconst_2_exe);
-    } else if (ICONST_3 == opcode) {
-        return makeInstruction(nop_fetchOp, iconst_3_exe);
-    } else if (ICONST_4 == opcode) {
-        return makeInstruction(nop_fetchOp, iconst_4_exe);
-    } else if (ICONST_5 == opcode) {
-        return makeInstruction(nop_fetchOp, iconst_5_exe);
-    } else if (LCONST_0 == opcode) {
-        return makeInstruction(nop_fetchOp, lconst_0_exe);
-    } else if (LCONST_1 == opcode) {
-        return makeInstruction(nop_fetchOp, lconst_1_exe);
-    } else if (FCONST_0 == opcode) {
-        return makeInstruction(nop_fetchOp, fconst_0_exe);
-    } else if (FCONST_1 == opcode) {
-        return makeInstruction(nop_fetchOp, fconst_1_exe);
-    } else if (FCONST_2 == opcode) {
-        return makeInstruction(nop_fetchOp, fconst_2_exe);
-    } else if (DCONST_0 == opcode) {
-        return makeInstruction(nop_fetchOp, dconst_0_exe);
-    } else if (DCONST_1 == opcode) {
-        return makeInstruction(nop_fetchOp, dconst_1_exe);
-    } else if (BIPUSH == opcode) {
-        return makeInstruction(bipush_fetchOp, bipush_exe);
-    } else if (SIPUSH == opcode) {
-        return makeInstruction(sipush_fetchOp, sipush_exe);
-    } else if (LDC == opcode) {
-        return makeInstruction(nop_fetchOp, ldc_exe);
-    } else if (LDC_W == opcode) {
-        return makeInstruction(nop_fetchOp, ldc_w_exe);
-    } else if (LDC2_W == opcode) {
-        return makeInstruction(nop_fetchOp, ldc2_w_exe);
-    } else if (ILOAD == opcode) {
-        return makeInstruction(index8_fetchOp, iload_exe);
-    } else if (LLOAD == opcode) {
-        return makeInstruction(nop_fetchOp, lload_exe);
-    } else if (FLOAD == opcode) {
-        return makeInstruction(nop_fetchOp, fload_exe);
-    } else if (DLOAD == opcode) {
-        return makeInstruction(nop_fetchOp, dload_exe);
-    } else if (ALOAD == opcode) {
-        return makeInstruction(nop_fetchOp, aload_exe);
-    } else if (ILOAD_0 == opcode) {
-        return makeInstruction(nop_fetchOp, iload_0_exe);
-    } else if (ILOAD_1 == opcode) {
-        return makeInstruction(nop_fetchOp, iload_1_exe);
-    } else if (ILOAD_2 == opcode) {
-        return makeInstruction(nop_fetchOp, iload_2_exe);
-    } else if (ILOAD_3 == opcode) {
-        return makeInstruction(nop_fetchOp, iload_3_exe);
-    } else if (LLOAD_0 == opcode) {
-        return makeInstruction(nop_fetchOp, lload_0_exe);
-    } else if (LLOAD_1 == opcode) {
-        return makeInstruction(nop_fetchOp, lload_1_exe);
-    } else if (LLOAD_2 == opcode) {
-        return makeInstruction(nop_fetchOp, lload_2_exe);
-    } else if (LLOAD_3 == opcode) {
-        return makeInstruction(nop_fetchOp, lload_3_exe);
-    } else if (FLOAD_0 == opcode) {
-        return makeInstruction(nop_fetchOp, fload_0_exe);
-    } else if (FLOAD_1 == opcode) {
-        return makeInstruction(nop_fetchOp, fload_1_exe);
-    } else if (FLOAD_2 == opcode) {
-        return makeInstruction(nop_fetchOp, fload_2_exe);
-    } else if (FLOAD_3 == opcode) {
-        return makeInstruction(nop_fetchOp, fload_3_exe);
-    } else if (DLOAD_0 == opcode) {
-        return makeInstruction(nop_fetchOp, dload_0_exe);
-    } else if (DLOAD_1 == opcode) {
-        return makeInstruction(nop_fetchOp, dload_1_exe);
-    } else if (DLOAD_2 == opcode) {
-        return makeInstruction(nop_fetchOp, dload_2_exe);
-    } else if (DLOAD_3 == opcode) {
-        return makeInstruction(nop_fetchOp, dload_3_exe);
-    } else if (ALOAD_0 == opcode) {
-        return makeInstruction(nop_fetchOp, aload_0_exe);
-    } else if (ALOAD_1 == opcode) {
-        return makeInstruction(nop_fetchOp, aload_1_exe);
-    } else if (ALOAD_2 == opcode) {
-        return makeInstruction(nop_fetchOp, aload_2_exe);
-    } else if (ALOAD_3 == opcode) {
-        return makeInstruction(nop_fetchOp, aload_3_exe);
-    } else if (IALOAD == opcode) {
-        return makeInstruction(nop_fetchOp, iaload_exe);
-    } else if (LALOAD == opcode) {
-        return makeInstruction(nop_fetchOp, laload_exe);
-    } else if (FALOAD == opcode) {
-        return makeInstruction(nop_fetchOp, faload_exe);
-    } else if (DALOAD == opcode) {
-        return makeInstruction(nop_fetchOp, daload_exe);
-    } else if (AALOAD == opcode) {
-        return makeInstruction(nop_fetchOp, aaload_exe);
-    } else if (BALOAD == opcode) {
-        return makeInstruction(nop_fetchOp, baload_exe);
-    } else if (CALOAD == opcode) {
-        return makeInstruction(nop_fetchOp, caload_exe);
-    } else if (SALOAD == opcode) {
-        return makeInstruction(nop_fetchOp, saload_exe);
-    } else if (ISTORE == opcode) {
-        return makeInstruction(index8_fetchOp, istore_exe);
-    } else if (LSTORE == opcode) {
-        return makeInstruction(nop_fetchOp, lstore_exe);
-    } else if (FSTORE == opcode) {
-        return makeInstruction(nop_fetchOp, fstore_exe);
-    } else if (DSTORE == opcode) {
-        return makeInstruction(nop_fetchOp, dstore_exe);
-    } else if (ASTORE == opcode) {
-        return makeInstruction(nop_fetchOp, astore_exe);
-    } else if (ISTORE_0 == opcode) {
-        return makeInstruction(nop_fetchOp, istore_0_exe);
-    } else if (ISTORE_1 == opcode) {
-        return makeInstruction(nop_fetchOp, istore_1_exe);
-    } else if (ISTORE_2 == opcode) {
-        return makeInstruction(nop_fetchOp, istore_2_exe);
-    } else if (ISTORE_3 == opcode) {
-        return makeInstruction(nop_fetchOp, istore_3_exe);
-    } else if (LSTORE_0 == opcode) {
-        return makeInstruction(nop_fetchOp, lstore_0_exe);
-    } else if (LSTORE_1 == opcode) {
-        return makeInstruction(nop_fetchOp, lstore_1_exe);
-    } else if (LSTORE_2 == opcode) {
-        return makeInstruction(nop_fetchOp, lstore_2_exe);
-    } else if (LSTORE_3 == opcode) {
-        return makeInstruction(nop_fetchOp, lstore_3_exe);
-    } else if (FSTORE_0 == opcode) {
-        return makeInstruction(nop_fetchOp, fstore_0_exe);
-    } else if (FSTORE_1 == opcode) {
-        return makeInstruction(nop_fetchOp, fstore_1_exe);
-    } else if (FSTORE_2 == opcode) {
-        return makeInstruction(nop_fetchOp, fstore_2_exe);
-    } else if (FSTORE_3 == opcode) {
-        return makeInstruction(nop_fetchOp, fstore_3_exe);
-    } else if (DSTORE_0 == opcode) {
-        return makeInstruction(nop_fetchOp, dstore_0_exe);
-    } else if (DSTORE_1 == opcode) {
-        return makeInstruction(nop_fetchOp, dstore_1_exe);
-    } else if (DSTORE_2 == opcode) {
-        return makeInstruction(nop_fetchOp, dstore_2_exe);
-    } else if (DSTORE_3 == opcode) {
-        return makeInstruction(nop_fetchOp, dstore_3_exe);
-    } else if (ASTORE_0 == opcode) {
-        return makeInstruction(nop_fetchOp, astore_0_exe);
-    } else if (ASTORE_1 == opcode) {
-        return makeInstruction(nop_fetchOp, astore_1_exe);
-    } else if (ASTORE_2 == opcode) {
-        return makeInstruction(nop_fetchOp, astore_2_exe);
-    } else if (ASTORE_3 == opcode) {
-        return makeInstruction(nop_fetchOp, astore_3_exe);
-    } else if (IASTORE == opcode) {
-        return makeInstruction(nop_fetchOp, iastore_exe);
-    } else if (LASTORE == opcode) {
-        return makeInstruction(nop_fetchOp, lastore_exe);
-    } else if (FASTORE == opcode) {
-        return makeInstruction(nop_fetchOp, fastore_exe);
-    } else if (DASTORE == opcode) {
-        return makeInstruction(nop_fetchOp, dastore_exe);
-    } else if (AASTORE == opcode) {
-        return makeInstruction(nop_fetchOp, aastore_exe);
-    } else if (BASTORE == opcode) {
-        return makeInstruction(nop_fetchOp, bastore_exe);
-    } else if (CASTORE == opcode) {
-        return makeInstruction(nop_fetchOp, castore_exe);
-    } else if (SASTORE == opcode) {
-        return makeInstruction(nop_fetchOp, sastore_exe);
-    } else if (POP == opcode) {
-        return makeInstruction(nop_fetchOp, pop_exe);
-    } else if (POP2 == opcode) {
-        return makeInstruction(nop_fetchOp, pop2_exe);
-    } else if (DUP == opcode) {
-        return makeInstruction(nop_fetchOp, dup_exe);
-    } else if (DUP_X1 == opcode) {
-        return makeInstruction(nop_fetchOp, dup_x1_exe);
-    } else if (DUP_X2 == opcode) {
-        return makeInstruction(nop_fetchOp, dup_x2_exe);
-    } else if (DUP2 == opcode) {
-        return makeInstruction(nop_fetchOp, dup2_exe);
-    } else if (DUP2_X1 == opcode) {
-        return makeInstruction(nop_fetchOp, dup2_x1_exe);
-    } else if (DUP2_X2 == opcode) {
-        return makeInstruction(nop_fetchOp, dup2_x2_exe);
-    } else if (SWAP == opcode) {
-        return makeInstruction(nop_fetchOp, swap_exe);
-    } else if (IADD == opcode) {
-        return makeInstruction(nop_fetchOp, iadd_exe);
-    } else if (LADD == opcode) {
-        return makeInstruction(nop_fetchOp, ladd_exe);
-    } else if (FADD == opcode) {
-        return makeInstruction(nop_fetchOp, fadd_exe);
-    } else if (DADD == opcode) {
-        return makeInstruction(nop_fetchOp, dadd_exe);
-    } else if (ISUB == opcode) {
-        return makeInstruction(nop_fetchOp, isub_exe);
-    } else if (LSUB == opcode) {
-        return makeInstruction(nop_fetchOp, lsub_exe);
-    } else if (FSUB == opcode) {
-        return makeInstruction(nop_fetchOp, fsub_exe);
-    } else if (DSUB == opcode) {
-        return makeInstruction(nop_fetchOp, dsub_exe);
-    } else if (IMUL == opcode) {
-        return makeInstruction(nop_fetchOp, imul_exe);
-    } else if (LMUL == opcode) {
-        return makeInstruction(nop_fetchOp, lmul_exe);
-    } else if (FMUL == opcode) {
-        return makeInstruction(nop_fetchOp, fmul_exe);
-    } else if (DMUL == opcode) {
-        return makeInstruction(nop_fetchOp, dmul_exe);
-    } else if (IDIV == opcode) {
-        return makeInstruction(nop_fetchOp, idiv_exe);
-    } else if (LDIV == opcode) {
-        return makeInstruction(nop_fetchOp, ldiv_exe);
-    } else if (FDIV == opcode) {
-        return makeInstruction(nop_fetchOp, fdiv_exe);
-    } else if (DDIV == opcode) {
-        return makeInstruction(nop_fetchOp, ddiv_exe);
-    } else if (IREM == opcode) {
-        return makeInstruction(nop_fetchOp, irem_exe);
-    } else if (LREM == opcode) {
-        return makeInstruction(nop_fetchOp, lrem_exe);
-    } else if (FREM == opcode) {
-        return makeInstruction(nop_fetchOp, frem_exe);
-    } else if (DREM == opcode) {
-        return makeInstruction(nop_fetchOp, drem_exe);
-    } else if (INEG == opcode) {
-        return makeInstruction(nop_fetchOp, ineg_exe);
-    } else if (LNEG == opcode) {
-        return makeInstruction(nop_fetchOp, lneg_exe);
-    } else if (FNEG == opcode) {
-        return makeInstruction(nop_fetchOp, fneg_exe);
-    } else if (DNEG == opcode) {
-        return makeInstruction(nop_fetchOp, dneg_exe);
-    } else if (ISHL == opcode) {
-        return makeInstruction(nop_fetchOp, ishl_exe);
-    } else if (LSHL == opcode) {
-        return makeInstruction(nop_fetchOp, lshl_exe);
-    } else if (ISHR == opcode) {
-        return makeInstruction(nop_fetchOp, ishr_exe);
-    } else if (LSHR == opcode) {
-        return makeInstruction(nop_fetchOp, lshr_exe);
-    } else if (IUSHR == opcode) {
-        return makeInstruction(nop_fetchOp, iushr_exe);
-    } else if (LUSHR == opcode) {
-        return makeInstruction(nop_fetchOp, lushr_exe);
-    } else if (IAND == opcode) {
-        return makeInstruction(nop_fetchOp, iand_exe);
-    } else if (LAND == opcode) {
-        return makeInstruction(nop_fetchOp, land_exe);
-    } else if (IOR == opcode) {
-        return makeInstruction(nop_fetchOp, ior_exe);
-    } else if (LOR == opcode) {
-        return makeInstruction(nop_fetchOp, lor_exe);
-    } else if (IXOR == opcode) {
-        return makeInstruction(nop_fetchOp, ixor_exe);
-    } else if (LXOR == opcode) {
-        return makeInstruction(nop_fetchOp, lxor_exe);
-    } else if (IINC == opcode) {
-        return makeInstruction(nop_fetchOp, iinc_exe);
-    } else if (I2L == opcode) {
-        return makeInstruction(nop_fetchOp, i2l_exe);
-    } else if (I2F == opcode) {
-        return makeInstruction(nop_fetchOp, i2f_exe);
-    } else if (I2D == opcode) {
-        return makeInstruction(nop_fetchOp, i2d_exe);
-    } else if (L2I == opcode) {
-        return makeInstruction(nop_fetchOp, l2i_exe);
-    } else if (L2F == opcode) {
-        return makeInstruction(nop_fetchOp, l2f_exe);
-    } else if (L2D == opcode) {
-        return makeInstruction(nop_fetchOp, l2d_exe);
-    } else if (F2I == opcode) {
-        return makeInstruction(nop_fetchOp, f2i_exe);
-    } else if (F2L == opcode) {
-        return makeInstruction(nop_fetchOp, f2l_exe);
-    } else if (F2D == opcode) {
-        return makeInstruction(nop_fetchOp, f2d_exe);
-    } else if (D2I == opcode) {
-        return makeInstruction(nop_fetchOp, d2i_exe);
-    } else if (D2L == opcode) {
-        return makeInstruction(nop_fetchOp, d2l_exe);
-    } else if (D2F == opcode) {
-        return makeInstruction(nop_fetchOp, d2f_exe);
-    } else if (I2B == opcode) {
-        return makeInstruction(nop_fetchOp, i2b_exe);
-    } else if (I2C == opcode) {
-        return makeInstruction(nop_fetchOp, i2c_exe);
-    } else if (I2S == opcode) {
-        return makeInstruction(nop_fetchOp, i2s_exe);
-    } else if (LCMP == opcode) {
-        return makeInstruction(nop_fetchOp, lcmp_exe);
-    } else if (FCMPL == opcode) {
-        return makeInstruction(nop_fetchOp, fcmpl_exe);
-    } else if (FCMPG == opcode) {
-        return makeInstruction(nop_fetchOp, fcmpg_exe);
-    } else if (DCMPL == opcode) {
-        return makeInstruction(nop_fetchOp, dcmpl_exe);
-    } else if (DCMPG == opcode) {
-        return makeInstruction(nop_fetchOp, dcmpg_exe);
-    } else if (IFEQ == opcode) {
-        return makeInstruction(branch_fetchOp, ifeq_exe);
-    } else if (IFNE == opcode) {
-        return makeInstruction(branch_fetchOp, ifne_exe);
-    } else if (IFLT == opcode) {
-        return makeInstruction(branch_fetchOp, iflt_exe);
-    } else if (IFGE == opcode) {
-        return makeInstruction(branch_fetchOp, ifge_exe);
-    } else if (IFGT == opcode) {
-        return makeInstruction(branch_fetchOp, ifgt_exe);
-    } else if (IFLE == opcode) {
-        return makeInstruction(branch_fetchOp, ifle_exe);
-    } else if (IF_ICMPEQ == opcode) {
-        return makeInstruction(nop_fetchOp, if_icmpeq_exe);
-    } else if (IF_ICMPNE == opcode) {
-        return makeInstruction(nop_fetchOp, if_icmpne_exe);
-    } else if (IF_ICMPLT == opcode) {
-        return makeInstruction(nop_fetchOp, if_icmplt_exe);
-    } else if (IF_ICMPGE == opcode) {
-        return makeInstruction(nop_fetchOp, if_icmpge_exe);
-    } else if (IF_ICMPGT == opcode) {
-        return makeInstruction(nop_fetchOp, if_icmpgt_exe);
-    } else if (IF_ICMPLE == opcode) {
-        return makeInstruction(nop_fetchOp, if_icmple_exe);
-    } else if (IF_ACMPEQ == opcode) {
-        return makeInstruction(nop_fetchOp, if_acmpeq_exe);
-    } else if (IF_ACMPNE == opcode) {
-        return makeInstruction(nop_fetchOp, if_acmpne_exe);
-    } else if (GOTO == opcode) {
-        return makeInstruction(nop_fetchOp, goto_exe);
-    } else if (JSR == opcode) {
-        return makeInstruction(nop_fetchOp, jsr_exe);
-    } else if (RET == opcode) {
-        return makeInstruction(nop_fetchOp, ret_exe);
-    } else if (TABLESWITCH == opcode) {
-        return makeInstruction(nop_fetchOp, tableswitch_exe);
-    } else if (LOOKUPSWITCH == opcode) {
-        return makeInstruction(nop_fetchOp, lookupswitch_exe);
-    } else if (IRETURN == opcode) {
-        return makeInstruction(nop_fetchOp, ireturn_exe);
-    } else if (LRETURN == opcode) {
-        return makeInstruction(nop_fetchOp, lreturn_exe);
-    } else if (FRETURN == opcode) {
-        return makeInstruction(nop_fetchOp, freturn_exe);
-    } else if (DRETURN == opcode) {
-        return makeInstruction(nop_fetchOp, dreturn_exe);
-    } else if (ARETURN == opcode) {
-        return makeInstruction(nop_fetchOp, areturn_exe);
-    } else if (RETURN == opcode) {
-        return makeInstruction(nop_fetchOp, return_exe);
-    } else if (GETSTATIC == opcode) {
-        return makeInstruction(index16_fetchOp, getstatic_exe);
-    } else if (PUTSTATIC == opcode) {
-        return makeInstruction(index16_fetchOp, putstatic_exe);
-    } else if (GETFIELD == opcode) {
-        return makeInstruction(index16_fetchOp, getfield_exe);
-    } else if (PUTFIELD == opcode) {
-        return makeInstruction(index16_fetchOp, putfield_exe);
-    } else if (INVOKEVIRTUAL == opcode) {
-        return makeInstruction(index16_fetchOp, invokevirtual_exe);
-    } else if (INVOKESPECIAL == opcode) {
-        return makeInstruction(index16_fetchOp, invokespecial_exe);
-    } else if (INVOKESTATIC == opcode) {
-        return makeInstruction(index16_fetchOp, invokestatic_exe);
-    } else if (INVOKEINTERFACE == opcode) {
-        return makeInstruction(invokeinterface_fetchOp, invokeinterface_exe);
-    } else if (INVOKEDYNAMIC == opcode) {
-        return makeInstruction(nop_fetchOp, invokedynamic_exe);
-    } else if (INVOKENATIVE == opcode) {
-        return makeInstruction(nop_fetchOp, invokenative_exe);
-    } else if (NEW == opcode) {
-        return makeInstruction(index16_fetchOp, new_exe);
-    } else if (NEWARRAY == opcode) {
-        return makeInstruction(newarray_fetchOp, newarray_exe);
-    } else if (ANEWARRAY == opcode) {
-        return makeInstruction(index16_fetchOp, anewarray_exe);
-    } else if (ARRAYLENGTH == opcode) {
-        return makeInstruction(nop_fetchOp, arraylength_exe);
-    } else if (ATHROW == opcode) {
-        return makeInstruction(nop_fetchOp, athrow_exe);
-    } else if (CHECKCAST == opcode) {
-        return makeInstruction(nop_fetchOp, checkcast_exe);
-    } else if (INSTANCEOF == opcode) {
-        return makeInstruction(index16_fetchOp, instanceof_exe);
-    } else if (MONITORENTER == opcode) {
-        return makeInstruction(nop_fetchOp, monitorenter_exe);
-    } else if (MONITOREXIT == opcode) {
-        return makeInstruction(nop_fetchOp, monitorexit_exe);
-    } else if (WIDE == opcode) {
-        return makeInstruction(nop_fetchOp, wide_exe);
-    } else if (MULTIANEWARRAY == opcode) {
-        return makeInstruction(nop_fetchOp, multianewarray_exe);
-    } else if (IFNULL == opcode) {
-        return makeInstruction(branch_fetchOp, ifnull_exe);
-    } else if (IFNONNULL == opcode) {
-        return makeInstruction(branch_fetchOp, ifnonnull_exe);
-    } else if (GOTO_W == opcode) {
-        return makeInstruction(nop_fetchOp, goto_w_exe);
-    } else if (JSR_W == opcode) {
-        return makeInstruction(nop_fetchOp, jsr_w_exe);
-    } else {
-        // TODO
-        printf("Unsupported opcode: 0x%x\n", opcode);
+    switch (opcode) {
+        case NOP:
+            return makeInstruction(nop_fetchOp, nop_exe);
+        case ACONST_NULL:
+            return makeInstruction(nop_fetchOp, aconst_null_exe);
+        case ICONST_M1 :
+            return makeInstruction(nop_fetchOp, iconst_m1_exe);
+        case ICONST_0 :
+            return makeInstruction(nop_fetchOp, iconst_0_exe);
+        case ICONST_1 :
+            return makeInstruction(nop_fetchOp, iconst_1_exe);
+        case ICONST_2 :
+            return makeInstruction(nop_fetchOp, iconst_2_exe);
+        case ICONST_3 :
+            return makeInstruction(nop_fetchOp, iconst_3_exe);
+        case ICONST_4 :
+            return makeInstruction(nop_fetchOp, iconst_4_exe);
+        case ICONST_5 :
+            return makeInstruction(nop_fetchOp, iconst_5_exe);
+        case LCONST_0 :
+            return makeInstruction(nop_fetchOp, lconst_0_exe);
+        case LCONST_1 :
+            return makeInstruction(nop_fetchOp, lconst_1_exe);
+        case FCONST_0 :
+            return makeInstruction(nop_fetchOp, fconst_0_exe);
+        case FCONST_1 :
+            return makeInstruction(nop_fetchOp, fconst_1_exe);
+        case FCONST_2 :
+            return makeInstruction(nop_fetchOp, fconst_2_exe);
+        case DCONST_0 :
+            return makeInstruction(nop_fetchOp, dconst_0_exe);
+        case DCONST_1 :
+            return makeInstruction(nop_fetchOp, dconst_1_exe);
+        case BIPUSH :
+            return makeInstruction(bipush_fetchOp, bipush_exe);
+        case SIPUSH :
+            return makeInstruction(sipush_fetchOp, sipush_exe);
+        case LDC :
+            return makeInstruction(nop_fetchOp, ldc_exe);
+        case LDC_W :
+            return makeInstruction(nop_fetchOp, ldc_w_exe);
+        case LDC2_W :
+            return makeInstruction(nop_fetchOp, ldc2_w_exe);
+        case ILOAD :
+            return makeInstruction(index8_fetchOp, iload_exe);
+        case LLOAD :
+            return makeInstruction(nop_fetchOp, lload_exe);
+        case FLOAD :
+            return makeInstruction(nop_fetchOp, fload_exe);
+        case DLOAD :
+            return makeInstruction(nop_fetchOp, dload_exe);
+        case ALOAD :
+            return makeInstruction(nop_fetchOp, aload_exe);
+        case ILOAD_0 :
+            return makeInstruction(nop_fetchOp, iload_0_exe);
+        case ILOAD_1 :
+            return makeInstruction(nop_fetchOp, iload_1_exe);
+        case ILOAD_2 :
+            return makeInstruction(nop_fetchOp, iload_2_exe);
+        case ILOAD_3 :
+            return makeInstruction(nop_fetchOp, iload_3_exe);
+        case LLOAD_0 :
+            return makeInstruction(nop_fetchOp, lload_0_exe);
+        case LLOAD_1 :
+            return makeInstruction(nop_fetchOp, lload_1_exe);
+        case LLOAD_2 :
+            return makeInstruction(nop_fetchOp, lload_2_exe);
+        case LLOAD_3 :
+            return makeInstruction(nop_fetchOp, lload_3_exe);
+        case FLOAD_0 :
+            return makeInstruction(nop_fetchOp, fload_0_exe);
+        case FLOAD_1 :
+            return makeInstruction(nop_fetchOp, fload_1_exe);
+        case FLOAD_2 :
+            return makeInstruction(nop_fetchOp, fload_2_exe);
+        case FLOAD_3 :
+            return makeInstruction(nop_fetchOp, fload_3_exe);
+        case DLOAD_0 :
+            return makeInstruction(nop_fetchOp, dload_0_exe);
+        case DLOAD_1 :
+            return makeInstruction(nop_fetchOp, dload_1_exe);
+        case DLOAD_2 :
+            return makeInstruction(nop_fetchOp, dload_2_exe);
+        case DLOAD_3 :
+            return makeInstruction(nop_fetchOp, dload_3_exe);
+        case ALOAD_0 :
+            return makeInstruction(nop_fetchOp, aload_0_exe);
+        case ALOAD_1 :
+            return makeInstruction(nop_fetchOp, aload_1_exe);
+        case ALOAD_2 :
+            return makeInstruction(nop_fetchOp, aload_2_exe);
+        case ALOAD_3 :
+            return makeInstruction(nop_fetchOp, aload_3_exe);
+        case IALOAD :
+            return makeInstruction(nop_fetchOp, iaload_exe);
+        case LALOAD :
+            return makeInstruction(nop_fetchOp, laload_exe);
+        case FALOAD :
+            return makeInstruction(nop_fetchOp, faload_exe);
+        case DALOAD :
+            return makeInstruction(nop_fetchOp, daload_exe);
+        case AALOAD :
+            return makeInstruction(nop_fetchOp, aaload_exe);
+        case BALOAD :
+            return makeInstruction(nop_fetchOp, baload_exe);
+        case CALOAD :
+            return makeInstruction(nop_fetchOp, caload_exe);
+        case SALOAD :
+            return makeInstruction(nop_fetchOp, saload_exe);
+        case ISTORE :
+            return makeInstruction(index8_fetchOp, istore_exe);
+        case LSTORE :
+            return makeInstruction(nop_fetchOp, lstore_exe);
+        case FSTORE :
+            return makeInstruction(nop_fetchOp, fstore_exe);
+        case DSTORE :
+            return makeInstruction(nop_fetchOp, dstore_exe);
+        case ASTORE :
+            return makeInstruction(nop_fetchOp, astore_exe);
+        case ISTORE_0 :
+            return makeInstruction(nop_fetchOp, istore_0_exe);
+        case ISTORE_1 :
+            return makeInstruction(nop_fetchOp, istore_1_exe);
+        case ISTORE_2 :
+            return makeInstruction(nop_fetchOp, istore_2_exe);
+        case ISTORE_3 :
+            return makeInstruction(nop_fetchOp, istore_3_exe);
+        case LSTORE_0 :
+            return makeInstruction(nop_fetchOp, lstore_0_exe);
+        case LSTORE_1 :
+            return makeInstruction(nop_fetchOp, lstore_1_exe);
+        case LSTORE_2 :
+            return makeInstruction(nop_fetchOp, lstore_2_exe);
+        case LSTORE_3 :
+            return makeInstruction(nop_fetchOp, lstore_3_exe);
+        case FSTORE_0 :
+            return makeInstruction(nop_fetchOp, fstore_0_exe);
+        case FSTORE_1 :
+            return makeInstruction(nop_fetchOp, fstore_1_exe);
+        case FSTORE_2 :
+            return makeInstruction(nop_fetchOp, fstore_2_exe);
+        case FSTORE_3 :
+            return makeInstruction(nop_fetchOp, fstore_3_exe);
+        case DSTORE_0 :
+            return makeInstruction(nop_fetchOp, dstore_0_exe);
+        case DSTORE_1 :
+            return makeInstruction(nop_fetchOp, dstore_1_exe);
+        case DSTORE_2 :
+            return makeInstruction(nop_fetchOp, dstore_2_exe);
+        case DSTORE_3 :
+            return makeInstruction(nop_fetchOp, dstore_3_exe);
+        case ASTORE_0 :
+            return makeInstruction(nop_fetchOp, astore_0_exe);
+        case ASTORE_1 :
+            return makeInstruction(nop_fetchOp, astore_1_exe);
+        case ASTORE_2 :
+            return makeInstruction(nop_fetchOp, astore_2_exe);
+        case ASTORE_3 :
+            return makeInstruction(nop_fetchOp, astore_3_exe);
+        case IASTORE :
+            return makeInstruction(nop_fetchOp, iastore_exe);
+        case LASTORE :
+            return makeInstruction(nop_fetchOp, lastore_exe);
+        case FASTORE :
+            return makeInstruction(nop_fetchOp, fastore_exe);
+        case DASTORE :
+            return makeInstruction(nop_fetchOp, dastore_exe);
+        case AASTORE :
+            return makeInstruction(nop_fetchOp, aastore_exe);
+        case BASTORE :
+            return makeInstruction(nop_fetchOp, bastore_exe);
+        case CASTORE :
+            return makeInstruction(nop_fetchOp, castore_exe);
+        case SASTORE :
+            return makeInstruction(nop_fetchOp, sastore_exe);
+        case POP :
+            return makeInstruction(nop_fetchOp, pop_exe);
+        case POP2 :
+            return makeInstruction(nop_fetchOp, pop2_exe);
+        case DUP :
+            return makeInstruction(nop_fetchOp, dup_exe);
+        case DUP_X1 :
+            return makeInstruction(nop_fetchOp, dup_x1_exe);
+        case DUP_X2 :
+            return makeInstruction(nop_fetchOp, dup_x2_exe);
+        case DUP2 :
+            return makeInstruction(nop_fetchOp, dup2_exe);
+        case DUP2_X1 :
+            return makeInstruction(nop_fetchOp, dup2_x1_exe);
+        case DUP2_X2 :
+            return makeInstruction(nop_fetchOp, dup2_x2_exe);
+        case SWAP :
+            return makeInstruction(nop_fetchOp, swap_exe);
+        case IADD :
+            return makeInstruction(nop_fetchOp, iadd_exe);
+        case LADD :
+            return makeInstruction(nop_fetchOp, ladd_exe);
+        case FADD :
+            return makeInstruction(nop_fetchOp, fadd_exe);
+        case DADD :
+            return makeInstruction(nop_fetchOp, dadd_exe);
+        case ISUB :
+            return makeInstruction(nop_fetchOp, isub_exe);
+        case LSUB :
+            return makeInstruction(nop_fetchOp, lsub_exe);
+        case FSUB :
+            return makeInstruction(nop_fetchOp, fsub_exe);
+        case DSUB :
+            return makeInstruction(nop_fetchOp, dsub_exe);
+        case IMUL :
+            return makeInstruction(nop_fetchOp, imul_exe);
+        case LMUL :
+            return makeInstruction(nop_fetchOp, lmul_exe);
+        case FMUL :
+            return makeInstruction(nop_fetchOp, fmul_exe);
+        case DMUL :
+            return makeInstruction(nop_fetchOp, dmul_exe);
+        case IDIV :
+            return makeInstruction(nop_fetchOp, idiv_exe);
+        case LDIV :
+            return makeInstruction(nop_fetchOp, ldiv_exe);
+        case FDIV :
+            return makeInstruction(nop_fetchOp, fdiv_exe);
+        case DDIV :
+            return makeInstruction(nop_fetchOp, ddiv_exe);
+        case IREM :
+            return makeInstruction(nop_fetchOp, irem_exe);
+        case LREM :
+            return makeInstruction(nop_fetchOp, lrem_exe);
+        case FREM :
+            return makeInstruction(nop_fetchOp, frem_exe);
+        case DREM :
+            return makeInstruction(nop_fetchOp, drem_exe);
+        case INEG :
+            return makeInstruction(nop_fetchOp, ineg_exe);
+        case LNEG :
+            return makeInstruction(nop_fetchOp, lneg_exe);
+        case FNEG :
+            return makeInstruction(nop_fetchOp, fneg_exe);
+        case DNEG :
+            return makeInstruction(nop_fetchOp, dneg_exe);
+        case ISHL :
+            return makeInstruction(nop_fetchOp, ishl_exe);
+        case LSHL :
+            return makeInstruction(nop_fetchOp, lshl_exe);
+        case ISHR :
+            return makeInstruction(nop_fetchOp, ishr_exe);
+        case LSHR :
+            return makeInstruction(nop_fetchOp, lshr_exe);
+        case IUSHR :
+            return makeInstruction(nop_fetchOp, iushr_exe);
+        case LUSHR :
+            return makeInstruction(nop_fetchOp, lushr_exe);
+        case IAND :
+            return makeInstruction(nop_fetchOp, iand_exe);
+        case LAND :
+            return makeInstruction(nop_fetchOp, land_exe);
+        case IOR :
+            return makeInstruction(nop_fetchOp, ior_exe);
+        case LOR :
+            return makeInstruction(nop_fetchOp, lor_exe);
+        case IXOR :
+            return makeInstruction(nop_fetchOp, ixor_exe);
+        case LXOR :
+            return makeInstruction(nop_fetchOp, lxor_exe);
+        case IINC :
+            return makeInstruction(nop_fetchOp, iinc_exe);
+        case I2L :
+            return makeInstruction(nop_fetchOp, i2l_exe);
+        case I2F :
+            return makeInstruction(nop_fetchOp, i2f_exe);
+        case I2D :
+            return makeInstruction(nop_fetchOp, i2d_exe);
+        case L2I :
+            return makeInstruction(nop_fetchOp, l2i_exe);
+        case L2F :
+            return makeInstruction(nop_fetchOp, l2f_exe);
+        case L2D :
+            return makeInstruction(nop_fetchOp, l2d_exe);
+        case F2I :
+            return makeInstruction(nop_fetchOp, f2i_exe);
+        case F2L :
+            return makeInstruction(nop_fetchOp, f2l_exe);
+        case F2D :
+            return makeInstruction(nop_fetchOp, f2d_exe);
+        case D2I :
+            return makeInstruction(nop_fetchOp, d2i_exe);
+        case D2L :
+            return makeInstruction(nop_fetchOp, d2l_exe);
+        case D2F :
+            return makeInstruction(nop_fetchOp, d2f_exe);
+        case I2B :
+            return makeInstruction(nop_fetchOp, i2b_exe);
+        case I2C :
+            return makeInstruction(nop_fetchOp, i2c_exe);
+        case I2S :
+            return makeInstruction(nop_fetchOp, i2s_exe);
+        case LCMP :
+            return makeInstruction(nop_fetchOp, lcmp_exe);
+        case FCMPL :
+            return makeInstruction(nop_fetchOp, fcmpl_exe);
+        case FCMPG :
+            return makeInstruction(nop_fetchOp, fcmpg_exe);
+        case DCMPL :
+            return makeInstruction(nop_fetchOp, dcmpl_exe);
+        case DCMPG :
+            return makeInstruction(nop_fetchOp, dcmpg_exe);
+        case IFEQ :
+            return makeInstruction(branch_fetchOp, ifeq_exe);
+        case IFNE :
+            return makeInstruction(branch_fetchOp, ifne_exe);
+        case IFLT :
+            return makeInstruction(branch_fetchOp, iflt_exe);
+        case IFGE :
+            return makeInstruction(branch_fetchOp, ifge_exe);
+        case IFGT :
+            return makeInstruction(branch_fetchOp, ifgt_exe);
+        case IFLE :
+            return makeInstruction(branch_fetchOp, ifle_exe);
+        case IF_ICMPEQ :
+            return makeInstruction(nop_fetchOp, if_icmpeq_exe);
+        case IF_ICMPNE :
+            return makeInstruction(nop_fetchOp, if_icmpne_exe);
+        case IF_ICMPLT :
+            return makeInstruction(nop_fetchOp, if_icmplt_exe);
+        case IF_ICMPGE :
+            return makeInstruction(nop_fetchOp, if_icmpge_exe);
+        case IF_ICMPGT :
+            return makeInstruction(nop_fetchOp, if_icmpgt_exe);
+        case IF_ICMPLE :
+            return makeInstruction(nop_fetchOp, if_icmple_exe);
+        case IF_ACMPEQ :
+            return makeInstruction(nop_fetchOp, if_acmpeq_exe);
+        case IF_ACMPNE :
+            return makeInstruction(nop_fetchOp, if_acmpne_exe);
+        case GOTO :
+            return makeInstruction(nop_fetchOp, goto_exe);
+        case JSR :
+            return makeInstruction(nop_fetchOp, jsr_exe);
+        case RET :
+            return makeInstruction(nop_fetchOp, ret_exe);
+        case TABLESWITCH :
+            return makeInstruction(nop_fetchOp, tableswitch_exe);
+        case LOOKUPSWITCH :
+            return makeInstruction(nop_fetchOp, lookupswitch_exe);
+        case IRETURN :
+            return makeInstruction(nop_fetchOp, ireturn_exe);
+        case LRETURN :
+            return makeInstruction(nop_fetchOp, lreturn_exe);
+        case FRETURN :
+            return makeInstruction(nop_fetchOp, freturn_exe);
+        case DRETURN :
+            return makeInstruction(nop_fetchOp, dreturn_exe);
+        case ARETURN :
+            return makeInstruction(nop_fetchOp, areturn_exe);
+        case RETURN :
+            return makeInstruction(nop_fetchOp, return_exe);
+        case GETSTATIC :
+            return makeInstruction(index16_fetchOp, getstatic_exe);
+        case PUTSTATIC :
+            return makeInstruction(index16_fetchOp, putstatic_exe);
+        case GETFIELD :
+            return makeInstruction(index16_fetchOp, getfield_exe);
+        case PUTFIELD :
+            return makeInstruction(index16_fetchOp, putfield_exe);
+        case INVOKEVIRTUAL :
+            return makeInstruction(index16_fetchOp, invokevirtual_exe);
+        case INVOKESPECIAL :
+            return makeInstruction(index16_fetchOp, invokespecial_exe);
+        case INVOKESTATIC :
+            return makeInstruction(index16_fetchOp, invokestatic_exe);
+        case INVOKEINTERFACE :
+            return makeInstruction(invokeinterface_fetchOp, invokeinterface_exe);
+        case INVOKEDYNAMIC :
+            return makeInstruction(nop_fetchOp, invokedynamic_exe);
+        case INVOKENATIVE :
+            return makeInstruction(nop_fetchOp, invokenative_exe);
+        case NEW :
+            return makeInstruction(index16_fetchOp, new_exe);
+        case NEWARRAY :
+            return makeInstruction(newarray_fetchOp, newarray_exe);
+        case ANEWARRAY :
+            return makeInstruction(index16_fetchOp, anewarray_exe);
+        case ARRAYLENGTH :
+            return makeInstruction(nop_fetchOp, arraylength_exe);
+        case ATHROW :
+            return makeInstruction(nop_fetchOp, athrow_exe);
+        case CHECKCAST :
+            return makeInstruction(nop_fetchOp, checkcast_exe);
+        case INSTANCEOF :
+            return makeInstruction(index16_fetchOp, instanceof_exe);
+        case MONITORENTER :
+            return makeInstruction(nop_fetchOp, monitorenter_exe);
+        case MONITOREXIT :
+            return makeInstruction(nop_fetchOp, monitorexit_exe);
+        case WIDE :
+            return makeInstruction(nop_fetchOp, wide_exe);
+        case MULTIANEWARRAY :
+            return makeInstruction(nop_fetchOp, multianewarray_exe);
+        case IFNULL :
+            return makeInstruction(branch_fetchOp, ifnull_exe);
+        case IFNONNULL :
+            return makeInstruction(branch_fetchOp, ifnonnull_exe);
+        case GOTO_W :
+            return makeInstruction(nop_fetchOp, goto_w_exe);
+        case JSR_W :
+            return makeInstruction(nop_fetchOp, jsr_w_exe);
+        default:
+            // TODO
+            printf("Unsupported opcode: 0x%x\n", opcode);
+            exit(1);
     }
 }
 
@@ -2138,6 +2168,7 @@ void initClass(Thread thread, Class _class) {
 }
 
 static void invokeMethod(Frame invoker_frame, Method method) {
+    printf("invokeMethod: %s\n", Method_name(method));
     Thread thread = Frame_thread(invoker_frame);
     Frame new_frame = newFrame(thread, Method_maxLocals(method), Method_maxStack(method), method);
     Thread_pushFrame(thread, new_frame);

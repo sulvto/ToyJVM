@@ -1260,20 +1260,23 @@ void _println(struct OperandStack *stack, char *descriptor) {
     } else if (strcmp(descriptor, "(C)V") == 0) {
         printf("%c\n", popInt(stack));
     } else if (strcmp(descriptor, "(B)V") == 0) {
-        printf("%v\n", popInt(stack));
+        printf("%d\n", popInt(stack));
     } else if (strcmp(descriptor, "(S)V") == 0) {
-        printf("%v\n", popInt(stack));
+        printf("%d\n", popInt(stack));
     } else if (strcmp(descriptor, "(I)V") == 0) {
-        printf("%v\n", popInt(stack));
+        printf("%d\n", popInt(stack));
     } else if (strcmp(descriptor, "(F)V") == 0) {
-        printf("%v\n", popFloat(stack));
+        printf("%d\n", popFloat(stack));
     } else if (strcmp(descriptor, "(J)V") == 0) {
-        printf("%v\n", popLong(stack));
+        printf("%d\n", popLong(stack));
     } else if (strcmp(descriptor, "(D)V") == 0) {
-        printf("%v\n", popDouble(stack));
+        printf("%d\n", popDouble(stack));
+    } else if (strcmp(descriptor, "(Ljava/lang/String;)V") == 0) {
+	    // TODO STRING
+	    printf("(Ljava/lang/String;)V\n");
     } else {
-        // TODO
-        printf("println: %s\n", descriptor);
+	    // TODO
+	    printf("println: %s\n", descriptor);
     }
     popRef(stack);
 }
@@ -1468,6 +1471,7 @@ void invokenative(union Context *context, Frame frame) {
 }
 
 void new_exe(union Context *context, Frame frame) {
+    printf("new_exe\n");
     Class current_class = Method_class((Method) Frame_method(frame));
     ClassRef class_ref = ConstantPool_classRef(Class_getConstantPool(current_class), context->index);
     // TODO free?
@@ -2117,7 +2121,7 @@ Object newObject(Class _class) {
     Object_setClass(object, _class);
     Object_setFields(object, Slots_new(Class_getInterfaceSlotCount(_class)));
     // TODO
-    return NULL;
+    return object;
 }
 
 int Object_isInterfaceOf(Object _this, Class _other) {
@@ -2174,8 +2178,8 @@ static void invokeMethod(Frame invoker_frame, Method method) {
     Thread_pushFrame(thread, new_frame);
     u4 arg_count = Method_argCount(method);
     if (arg_count > 0) {
+	    Slot slot = Frame_popSlot(invoker_frame);
         for (int i = arg_count - 1; i >= 0; --i) {
-            Slot slot = Frame_popSlot(invoker_frame);
             setSlot(i, slot, Frame_localVars(new_frame));
         }
     }
